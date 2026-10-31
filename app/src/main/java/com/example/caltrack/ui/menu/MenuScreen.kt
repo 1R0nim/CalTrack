@@ -3,6 +3,8 @@ package com.example.caltrack.ui.menu
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -40,6 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
@@ -72,6 +76,17 @@ fun MenuScreen(
     val layoutDirection = LocalLayoutDirection.current
     val context = LocalContext.current
     val version = remember(context) { context.versionName() }
+    val launcherIcon = remember(context) {
+        val drawable = requireNotNull(context.getDrawable(R.mipmap.ic_launcher_round))
+        val bitmap = Bitmap.createBitmap(
+            drawable.intrinsicWidth.coerceAtLeast(1),
+            drawable.intrinsicHeight.coerceAtLeast(1),
+            Bitmap.Config.ARGB_8888,
+        )
+        drawable.setBounds(0, 0, bitmap.width, bitmap.height)
+        drawable.draw(Canvas(bitmap))
+        BitmapPainter(bitmap.asImageBitmap())
+    }
 
     Column(
         modifier
@@ -101,7 +116,7 @@ fun MenuScreen(
         SettingsCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(R.mipmap.ic_launcher_round),
+                    painter = launcherIcon,
                     contentDescription = null,
                     modifier = Modifier
                         .size(48.dp)

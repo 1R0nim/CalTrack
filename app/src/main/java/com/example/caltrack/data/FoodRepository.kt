@@ -2,6 +2,8 @@ package com.example.caltrack.data
 
 import androidx.room.withTransaction
 import com.example.caltrack.data.local.CalTrackDatabase
+import com.example.caltrack.data.local.dao.DailyTotals
+import com.example.caltrack.data.local.dao.PeriodStats
 import com.example.caltrack.data.local.entity.FoodEntry
 import com.example.caltrack.data.local.entity.SavedFood
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +21,12 @@ class FoodRepository(private val db: CalTrackDatabase) {
     fun observeEntries(date: LocalDate): Flow<List<FoodEntry>> = entryDao.observeEntriesForDay(date)
 
     fun observeLoggedDays(): Flow<Set<LocalDate>> = entryDao.observeLoggedDays().map { it.toSet() }
+
+    fun observeDailyTotals(from: LocalDate, to: LocalDate): Flow<List<DailyTotals>> =
+        entryDao.observeDailyTotals(from, to)
+
+    fun observePeriodStats(from: LocalDate, to: LocalDate): Flow<PeriodStats> =
+        entryDao.observePeriodStats(from, to)
 
     /** Most used first, then most recently used. */
     fun observeSavedFoods(): Flow<List<SavedFood>> = savedFoodDao.observeAll()

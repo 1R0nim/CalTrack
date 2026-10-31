@@ -47,10 +47,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.caltrack.R
 import com.example.caltrack.data.AppSettings
 import com.example.caltrack.data.ThemeMode
-import com.example.caltrack.ui.components.PlaceholderScreen
 import com.example.caltrack.ui.menu.MenuScreen
 import com.example.caltrack.ui.meals.MealsRoute
 import com.example.caltrack.ui.meals.MealsViewModel
+import com.example.caltrack.ui.stats.StatisticsRoute
+import com.example.caltrack.ui.stats.StatisticsViewModel
 import com.example.caltrack.ui.today.TodayRoute
 import com.example.caltrack.ui.today.TodayViewModel
 import kotlinx.coroutines.withTimeoutOrNull
@@ -85,6 +86,7 @@ fun CalTrackAppShell(
     var section by rememberSaveable { mutableStateOf(AppSection.Today) }
     val todayViewModel: TodayViewModel = viewModel(factory = TodayViewModel.Factory)
     val mealsViewModel: MealsViewModel = viewModel(factory = MealsViewModel.Factory)
+    val statisticsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory)
     val snackbarHostState = remember { SnackbarHostState() }
     // Keeps each section's saveable state (scroll position, search text) while another one is shown
     val sectionStates = rememberSaveableStateHolder()
@@ -141,8 +143,8 @@ fun CalTrackAppShell(
                             contentPadding = screenPadding(extraBottom = FabClearance),
                             onShowSnackbar = showSnackbar,
                         )
-                        AppSection.Stats -> PlaceholderScreen(
-                            title = R.string.section_stats,
+                        AppSection.Stats -> StatisticsRoute(
+                            viewModel = statisticsViewModel,
                             contentPadding = screenPadding(),
                         )
                         AppSection.Meals -> MealsRoute(
