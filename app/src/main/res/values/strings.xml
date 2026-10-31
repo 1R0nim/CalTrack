@@ -1,3 +1,73 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="ro">
     <string name="app_name">CalTrack</string>
+
+    <string name="today">Azi</string>
+    <string name="yesterday">Ieri</string>
+    <string name="previous_day">Ziua anterioară</string>
+    <string name="next_day">Ziua următoare</string>
+    <string name="pick_day">Alege ziua</string>
+    <string name="previous_month">Luna anterioară</string>
+    <string name="next_month">Luna următoare</string>
+
+    <string name="section_stats">Statistici</string>
+    <string name="section_meals">Mese</string>
+    <string name="section_menu">Meniu</string>
+    <string name="coming_soon">În curând</string>
+
+    <string name="theme">Temă</string>
+    <string name="theme_system">Sistem</string>
+    <string name="theme_light">Luminos</string>
+    <string name="theme_dark">Întunecat</string>
+    <string name="appearance">Aspect</string>
+    <string name="dynamic_color">Culori din wallpaper</string>
+    <string name="dynamic_color_on">Culorile urmează imaginea de fundal</string>
+    <string name="dynamic_color_off">Paletă fixă, verde</string>
+    <string name="dynamic_color_unsupported">Disponibil de la Android 12</string>
+    <string name="about">Despre</string>
+    <string name="version">Versiunea %1$s</string>
+
+    <string name="calories">Calorii</string>
+    <string name="kcal">kcal</string>
+    <string name="grams">Grame</string>
+    <string name="grams_unit">g</string>
+    <string name="carbs">Carbo</string>
+    <string name="fat">Grăsimi</string>
+    <string name="protein">Proteine</string>
+    <string name="amount_grams">%1$s g</string>
+    <string name="amount_kcal">%1$s kcal</string>
+    <string name="calorie_split">Din ce vin caloriile</string>
+    <string name="percent">%1$d%%</string>
+
+    <string name="foods">Alimente</string>
+    <string name="empty_day_title">Nimic logat încă</string>
+    <string name="empty_day_hint">Apasă + ca să adaugi ce ai mâncat</string>
+    <string name="entry_deleted">Șters: %1$s</string>
+    <string name="undo">Anulează</string>
+    <string name="delete">Șterge</string>
+
+    <string name="add_food">Adaugă aliment</string>
+    <string name="edit_food">Editează alimentul</string>
+    <string name="name">Nume</string>
+    <string name="save">Salvează</string>
+    <string name="cancel">Renunță</string>
+    <string name="chip_food">%1$s · %2$s %3$s</string>
+    <string name="per_100g_kcal">%1$s kcal/100 g</string>
+
+    <string name="search_meals">Caută</string>
+    <string name="clear_search">Șterge căutarea</string>
+    <string name="meals_empty">Nicio masă salvată încă. Tot ce adaugi apare aici.</string>
+    <string name="meals_no_results">Nimic găsit pentru „%1$s”</string>
+    <string name="meal_portion">%1$s g · %2$s kcal</string>
+    <string name="meal_macros">P %1$s · C %2$s · G %3$s</string>
+    <string name="meal_added">Adăugat</string>
+    <string name="add_meal">Adaugă %1$s</string>
+    <string name="add">Adaugă</string>
+    <string name="edit">Editează</string>
+    <string name="delete_from_meals">Șterge din Mese</string>
+    <string name="delete_meal_title">Ștergi „%1$s” din Mese?</string>
+    <string name="delete_meal_text">Ce ai logat deja în zilele trecute rămâne neschimbat.</string>
+    <string name="edit_meal">Editează masa</string>
+    <string name="per_100g">La 100 g</string>
+    <string name="name_taken">Există deja o masă cu numele ăsta</string>
+    <string name="grams_amount">%1$d g</string>
 </resources>
