@@ -1,0 +1,11 @@
+<!-- Material Symbols "bar_chart" with hollow bars, the inactive counterpart of ic_bar_chart -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="evenOdd"
+        android:pathData="M640,800v-280h160v280H640ZM690,750h60v-180h-60v180ZM400,800v-640h160v640H400ZM450,750h60v-540h-60v540ZM160,800v-440h160v440H160ZM210,750h60v-340h-60v340Z" />
+</vector>

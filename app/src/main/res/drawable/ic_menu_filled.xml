@@ -1,0 +1,10 @@
+<!-- Material Symbols "menu" with heavier, rounded bars for the active state -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M170,730q-25,0 -42.5,-17.5T110,670q0,-25 17.5,-42.5T170,610h620q25,0 42.5,17.5T850,670q0,25 -17.5,42.5T790,730H170Zm0,-190q-25,0 -42.5,-17.5T110,480q0,-25 17.5,-42.5T170,420h620q25,0 42.5,17.5T850,480q0,25 -17.5,42.5T790,540H170Zm0,-190q-25,0 -42.5,-17.5T110,290q0,-25 17.5,-42.5T170,230h620q25,0 42.5,17.5T850,290q0,25 -17.5,42.5T790,350H170Z" />
+</vector>
