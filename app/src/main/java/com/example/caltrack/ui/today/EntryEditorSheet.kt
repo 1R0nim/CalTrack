@@ -3,22 +3,22 @@ package com.example.caltrack.ui.today
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,10 +28,11 @@ import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -61,12 +62,12 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.caltrack.R
@@ -91,6 +92,48 @@ import kotlinx.coroutines.launch
 
 private const val MaxSuggestions = 5
 
+/** Local steel-blue smoked surfaces for Add Food; light theme continues to use its selected palette. */
+private fun ColorScheme.withAddFoodSmokedSurfaces(): ColorScheme {
+    if (background.luminance() >= 0.5f) return this
+
+    val blue = Color(0xFFB8CEFA)
+    val primaryText = Color(0xFFF0F3FA)
+    val secondaryText = Color(0xFFA7B1C3)
+    return copy(
+        primary = blue,
+        onPrimary = Color(0xFF15243B),
+        primaryContainer = Color(0xFF263753),
+        onPrimaryContainer = primaryText,
+        secondary = Color(0xFF91A9CF),
+        onSecondary = Color(0xFF172438),
+        secondaryContainer = Color(0xFF1D2A3E),
+        onSecondaryContainer = primaryText,
+        tertiary = Color(0xFF9DBDDF),
+        onTertiary = Color(0xFF142434),
+        tertiaryContainer = Color(0xFF203347),
+        onTertiaryContainer = primaryText,
+        background = Color(0xFF101827),
+        onBackground = primaryText,
+        surface = Color(0xFF111A29),
+        onSurface = primaryText,
+        surfaceVariant = Color(0xFF1A2740),
+        onSurfaceVariant = secondaryText,
+        outline = Color(0xFF9AB1D8).copy(alpha = 0.30f),
+        outlineVariant = Color(0xFFB8CEFA).copy(alpha = 0.14f),
+        inverseSurface = Color(0xFFE2EAF7),
+        inverseOnSurface = Color(0xFF1B2638),
+        inversePrimary = Color(0xFF526B96),
+        surfaceTint = blue,
+        surfaceDim = Color(0xFF0C121D),
+        surfaceBright = Color(0xFF2D3D59),
+        surfaceContainerLowest = Color(0xFF0C121D),
+        surfaceContainerLow = Color(0xFF17243B),
+        surfaceContainer = Color(0xFF1D2B44),
+        surfaceContainerHigh = Color(0xFF243550),
+        surfaceContainerHighest = Color(0xFF304562),
+    )
+}
+
 /**
  * Add/edit form for one entry. A new entry can be filled from frequent or searched saved foods,
  * then reviewed and explicitly saved.
@@ -108,6 +151,13 @@ fun EntryEditorSheet(
     onDismiss: () -> Unit,
 ) {
     val isNew = entry.id == 0L
+    val baseColorScheme = MaterialTheme.colorScheme
+    val addFoodColorScheme = remember(baseColorScheme) {
+        baseColorScheme.withAddFoodSmokedSurfaces()
+    }
+    val addFoodMotionScheme = MaterialTheme.motionScheme
+    val addFoodTypography = MaterialTheme.typography
+
     fun prefill(value: Double) = if (isNew) "" else formatAmount(value)
 
     var name by rememberSaveable { mutableStateOf(entry.name) }
@@ -216,16 +266,21 @@ fun EntryEditorSheet(
         closeSearch()
     }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        modifier = Modifier.calTrackSurfaceOutline(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 0.dp,
-        sheetMaxWidth = 560.dp,
+    MaterialExpressiveTheme(
+        colorScheme = addFoodColorScheme,
+        motionScheme = addFoodMotionScheme,
+        typography = addFoodTypography,
     ) {
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            modifier = Modifier.calTrackSurfaceOutline(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 0.dp,
+            sheetMaxWidth = 560.dp,
+        ) {
         if (isNew) {
             LaunchedEffect(Unit) { nameFocus.requestFocus() }
         }
@@ -233,9 +288,10 @@ fun EntryEditorSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .imePadding()
                 .verticalScroll(editorScrollState)
-                .padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
                 modifier = Modifier
@@ -245,8 +301,9 @@ fun EntryEditorSheet(
             ) {
                 Text(
                     text = stringResource(if (isNew) R.string.add_food else R.string.edit_food),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(
@@ -412,28 +469,41 @@ fun EntryEditorSheet(
                         }
                     }
                 }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(onClick = { close(onDismiss) }, shapes = ButtonDefaults.shapes()) {
-                        Text(stringResource(R.string.cancel), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Button(
-                        onClick = save,
-                        enabled = edited != null,
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.save), style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
             }
         }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(
+                onClick = { close(onDismiss) },
+                shapes = ButtonDefaults.shapes(),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                Text(stringResource(R.string.cancel), style = MaterialTheme.typography.bodyMedium)
+            }
+            Button(
+                onClick = save,
+                enabled = edited != null,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                Text(stringResource(R.string.save), style = MaterialTheme.typography.titleSmall)
+            }
+        }
+    }
     }
 }
 
@@ -458,33 +528,42 @@ private fun FrequentFoodsSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
+            .padding(start = 20.dp, end = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            text = stringResource(R.string.frequent_foods),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
         AnimatedContent(targetState = searchOpen, label = "frequent-food-search") { searching ->
             if (searching) {
-                FoodSearchPanel(
-                    savedFoods = savedFoods,
-                    query = query,
-                    onQueryChange = onQueryChange,
-                    onClose = onCloseSearch,
-                    onSelect = onSelectFood,
-                    onBarcodeScanned = onBarcodeScanned,
-                    onScannerError = onScannerError,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = stringResource(R.string.frequent_foods),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    FoodSearchPanel(
+                        savedFoods = savedFoods,
+                        query = query,
+                        onQueryChange = onQueryChange,
+                        onClose = onCloseSearch,
+                        onSelect = onSelectFood,
+                        onBarcodeScanned = onBarcodeScanned,
+                        onScannerError = onScannerError,
+                    )
+                }
             } else {
-                FrequentFoodRow(
-                    foods = foods,
-                    onSearch = onOpenSearch,
-                    onSelect = onSelectFood,
-                    onBarcodeScanned = onBarcodeScanned,
-                    onScannerError = onScannerError,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = stringResource(R.string.frequent_foods),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    FrequentFoodRow(
+                        foods = foods,
+                        onSearch = onOpenSearch,
+                        onSelect = onSelectFood,
+                        onBarcodeScanned = onBarcodeScanned,
+                        onScannerError = onScannerError,
+                    )
+                }
             }
         }
         BarcodeLookupPanel(
@@ -506,14 +585,15 @@ private fun FrequentFoodRow(
     onScannerError: () -> Unit,
 ) {
     Row(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (foods.isEmpty()) {
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 64.dp),
+                    .heightIn(min = 76.dp),
                 shape = ListItemShape,
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                 border = calTrackSurfaceBorder(),
@@ -527,9 +607,12 @@ private fun FrequentFoodRow(
             }
         } else {
             LazyRow(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 76.dp)
+                    .clipToBounds(),
                 contentPadding = PaddingValues(end = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 itemsIndexed(foods, key = { _, item -> SavedFood.nameKeyOf(item.food.name) }) { index, item ->
                     val cardShape = RoundedCornerShape(
@@ -559,6 +642,7 @@ private fun FrequentFoodRow(
         BarcodeScannerButton(
             onBarcodeScanned = onBarcodeScanned,
             onScannerError = onScannerError,
+            modifier = Modifier.size(48.dp),
         )
     }
 }
@@ -568,8 +652,8 @@ private fun FrequentFoodCard(item: FrequentFood, shape: Shape, onClick: () -> Un
     val portion = item.food.toEntry(item.food.defaultAmount)
     Surface(
         modifier = Modifier
-            .width(128.dp)
-            .heightIn(min = 60.dp)
+            .width(140.dp)
+            .heightIn(min = 76.dp)
             .clickable(
                 onClickLabel = stringResource(R.string.select_food, item.food.name),
                 role = Role.Button,
@@ -582,9 +666,9 @@ private fun FrequentFoodCard(item: FrequentFood, shape: Shape, onClick: () -> Un
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = item.food.name,
@@ -593,15 +677,27 @@ private fun FrequentFoodCard(item: FrequentFood, shape: Shape, onClick: () -> Un
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
             )
             Text(
-                text = stringResource(R.string.amount_kcal, formatRounded(portion.kcal)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
+                text = stringResource(
+                    R.string.meal_portion,
+                    formatAmount(item.food.defaultAmount),
+                    item.food.quantityUnit.code,
+                    formatRounded(portion.kcal),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                textAlign = TextAlign.Center,
+                overflow = TextOverflow.Ellipsis,
             )
+            item.occurrenceCount?.let { count ->
+                Text(
+                    text = pluralStringResource(R.plurals.frequent_food_uses, count, count),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -709,25 +805,14 @@ private fun FoodSearchPanel(
                 )
             }
         } else {
-            Surface(
-                shape = ListItemShape,
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                border = calTrackSurfaceBorder(),
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 320.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 288.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    matches.forEachIndexed { index, food ->
-                        FoodSearchResult(food = food, onClick = { onSelect(food) })
-                        if (index != matches.lastIndex) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(start = 56.dp, end = 12.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-                            )
-                        }
-                    }
+                matches.forEach { food ->
+                    FoodSearchResult(food = food, onClick = { onSelect(food) })
                 }
             }
         }
@@ -737,70 +822,76 @@ private fun FoodSearchPanel(
 @Composable
 private fun FoodSearchResult(food: SavedFood, onClick: () -> Unit) {
     val portion = food.toEntry(food.defaultAmount)
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(
                 onClickLabel = stringResource(R.string.select_food, food.name),
                 role = Role.Button,
                 onClick = onClick,
-            )
-            .padding(horizontal = 8.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ),
+        shape = ListItemShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = calTrackSurfaceBorder(),
     ) {
-        ProductImage(food.imageUrl, food.name, size = 40.dp)
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                text = food.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            food.brand?.takeIf { it.isNotBlank() && !it.equals(food.name, ignoreCase = true) }?.let { brand ->
+            ProductImage(food.imageUrl, food.name, size = 44.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
                 Text(
-                    text = brand,
+                    text = food.name,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                food.brand?.takeIf { it.isNotBlank() && !it.equals(food.name, ignoreCase = true) }?.let { brand ->
+                    Text(
+                        text = brand,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = stringResource(
+                        R.string.meal_portion,
+                        formatAmount(food.defaultAmount),
+                        food.quantityUnit.code,
+                        formatRounded(portion.kcal),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.meal_macros,
+                        formatRounded(portion.protein),
+                        formatRounded(portion.carbs),
+                        formatRounded(portion.fat),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
             }
-            Text(
-                text = stringResource(
-                    R.string.meal_portion,
-                    formatAmount(food.defaultAmount),
-                    food.quantityUnit.code,
-                    formatRounded(portion.kcal),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-            Text(
-                text = stringResource(
-                    R.string.meal_macros,
-                    formatRounded(portion.protein),
-                    formatRounded(portion.carbs),
-                    formatRounded(portion.fat),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+            Icon(
+                painter = painterResource(R.drawable.ic_add),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .size(24.dp),
             )
         }
-        Icon(
-            painter = painterResource(R.drawable.ic_add),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .padding(end = 8.dp)
-                .size(20.dp),
-        )
     }
 }
 

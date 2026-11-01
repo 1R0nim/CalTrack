@@ -57,9 +57,9 @@ Keep this roadmap current as features are implemented. Do not mark work complete
 
 ### More expressive UI
 
-- [ ] Refine the Statistics screen.
-- [ ] Improve card hierarchy and spacing.
-- [ ] Improve chart presentation.
+- [x] Refine the Statistics screen.
+- [x] Improve card hierarchy and spacing.
+- [x] Improve chart presentation.
 - [x] Redesign the Today and Add Food experience around the AMOLED Black CalTrack palette.
 - [ ] Improve visual consistency across screens.
 - [ ] Continue following Google Material 3 Expressive.

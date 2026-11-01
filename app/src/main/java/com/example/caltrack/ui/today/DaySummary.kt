@@ -42,6 +42,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.caltrack.R
 import com.example.caltrack.ui.theme.CardShape
@@ -71,16 +72,14 @@ fun CaloriesCard(kcal: Double, modifier: Modifier = Modifier) {
     ) {
         Box(Modifier.fillMaxWidth()) {
             if (darkTheme) {
-                Box(
-                    Modifier
+                TodayCardArtwork(
+                    modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset(x = 40.dp, y = (-36).dp)
-                        .size(170.dp)
-                        .rotate(18f)
-                        .background(
-                            LocalContentColor.current.copy(alpha = 0.10f),
-                            MaterialShapes.Cookie9Sided.toShape(),
-                        ),
+                        .offset(x = 40.dp, y = (-36).dp),
+                    size = 170.dp,
+                    alpha = 0.10f,
+                    shapeIndex = 0,
+                    rotation = 18f,
                 )
             }
             Column(
@@ -196,44 +195,57 @@ fun MacroDistributionCard(
             containerColor = if (darkTheme) TodayPalette.distributionCard else colors.surfaceContainerLow,
         ),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.calorie_split),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = primaryTextColor,
-            )
-            SegmentedBar(
-                shares = animatedShares,
-                colors = segmentColors,
-                trackColor = if (darkTheme) TodayPalette.proteinCard else colors.surfaceContainerHighest,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+        Box(Modifier.fillMaxWidth()) {
+            if (darkTheme) {
+                TodayCardArtwork(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = (-18).dp, y = 18.dp),
+                    size = 112.dp,
+                    alpha = 0.035f,
+                    shapeIndex = 4,
+                    rotation = 37f,
+                )
+            }
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (visibleSegments.isEmpty()) {
-                    labels.forEachIndexed { index, label ->
-                        MacroLegend(
-                            label = label,
-                            share = animatedShares[index],
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                } else {
-                    visibleSegments.forEach { (index, share) ->
-                        MacroLegend(
-                            label = labels[index],
-                            share = share,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            modifier = Modifier.weight(share),
-                        )
+                Text(
+                    text = stringResource(R.string.calorie_split),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = primaryTextColor,
+                )
+                SegmentedBar(
+                    shares = animatedShares,
+                    colors = segmentColors,
+                    trackColor = if (darkTheme) TodayPalette.proteinCard else colors.surfaceContainerHighest,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (visibleSegments.isEmpty()) {
+                        labels.forEachIndexed { index, label ->
+                            MacroLegend(
+                                label = label,
+                                share = animatedShares[index],
+                                primaryTextColor = primaryTextColor,
+                                secondaryTextColor = secondaryTextColor,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    } else {
+                        visibleSegments.forEach { (index, share) ->
+                            MacroLegend(
+                                label = labels[index],
+                                share = share,
+                                primaryTextColor = primaryTextColor,
+                                secondaryTextColor = secondaryTextColor,
+                                modifier = Modifier.weight(share),
+                            )
+                        }
                     }
                 }
             }
@@ -251,6 +263,11 @@ private fun MacroMetric(
     compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val artworkVariant = when (label) {
+        R.string.carbs -> 1
+        R.string.fat -> 2
+        else -> 3
+    }
     Card(
         modifier = modifier.height(84.dp),
         shape = SmallCardShape,
@@ -259,51 +276,66 @@ private fun MacroMetric(
             contentColor = contentColor,
         ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    start = if (compact) 16.dp else 18.dp,
-                    end = if (compact) 16.dp else 18.dp,
-                    top = 12.dp,
-                    bottom = 8.dp,
-                ),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(22.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start,
-            ) {
-                Text(
-                    text = stringResource(label),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = contentColor,
-                    maxLines = 1,
-                    textAlign = TextAlign.Start,
-                    overflow = TextOverflow.Ellipsis,
+        Box(Modifier.fillMaxWidth()) {
+            if (MaterialTheme.colorScheme.isDarkCalTrackTheme()) {
+                TodayCardArtwork(
+                    modifier = when (label) {
+                        R.string.carbs -> Modifier.align(Alignment.TopStart).offset(x = (-14).dp, y = (-14).dp)
+                        R.string.fat -> Modifier.align(Alignment.BottomEnd).offset(x = 20.dp, y = 12.dp)
+                        else -> Modifier.align(Alignment.BottomStart).offset(x = (-18).dp, y = 12.dp)
+                    },
+                    size = 72.dp,
+                    alpha = 0.06f,
+                    shapeIndex = artworkVariant,
+                    rotation = 12f + Math.floorMod(artworkVariant * 17, 47),
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.Start,
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = if (compact) 16.dp else 18.dp,
+                        end = if (compact) 16.dp else 18.dp,
+                        top = 12.dp,
+                        bottom = 8.dp,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                AnimatedNumber(
-                    value = grams,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.alignByBaseline(),
-                )
-                Spacer(Modifier.width(3.dp))
-                Text(
-                    text = stringResource(R.string.grams_unit),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = secondaryColor,
-                    modifier = Modifier.alignByBaseline(),
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(22.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start,
+                ) {
+                    Text(
+                        text = stringResource(label),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = contentColor,
+                        maxLines = 1,
+                        textAlign = TextAlign.Start,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.Start,
+                ) {
+                    AnimatedNumber(
+                        value = grams,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        text = stringResource(R.string.grams_unit),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = secondaryColor,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                }
             }
         }
     }
@@ -365,6 +397,31 @@ private fun SegmentedBar(shares: List<Float>, colors: List<Color>, trackColor: C
             x += width + gap
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun TodayCardArtwork(
+    modifier: Modifier = Modifier,
+    size: Dp = 80.dp,
+    alpha: Float = 0.07f,
+    shapeIndex: Int,
+    rotation: Float = 18f,
+) {
+    val shape = when (Math.floorMod(shapeIndex, 6)) {
+        0 -> MaterialShapes.Cookie9Sided.toShape()
+        1 -> MaterialShapes.Clover4Leaf.toShape()
+        2 -> MaterialShapes.Sunny.toShape()
+        3 -> MaterialShapes.Cookie6Sided.toShape()
+        4 -> MaterialShapes.Gem.toShape()
+        else -> MaterialShapes.Puffy.toShape()
+    }
+    Box(
+        modifier
+            .size(size)
+            .rotate(rotation)
+            .background(LocalContentColor.current.copy(alpha = alpha), shape),
+    )
 }
 
 /** Counts up/down to [value] instead of jumping; starts from 0 when first shown. */

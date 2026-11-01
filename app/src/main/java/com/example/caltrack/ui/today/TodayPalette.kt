@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.luminance
 
 /** Expressive colors for the Today destination, kept local so other destinations retain their theme. */
 internal object TodayPalette {
-    val background = Color(0xFF030017)
+    val background = Color(0xFF07051D)
     val calorieCard = Color(0xFFBBCBF0)
     val calorieText = Color(0xFF344365)
 

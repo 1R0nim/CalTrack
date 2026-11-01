@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -146,6 +147,8 @@ private fun EntryRow(
     val colors = MaterialTheme.colorScheme
     val darkTheme = colors.isDarkCalTrackTheme()
     val secondaryTextColor = if (darkTheme) TodayPalette.secondaryText else colors.onSurfaceVariant
+    val artworkSeed = entry.name.trim().lowercase().hashCode()
+    val artworkPosition = Math.floorMod(artworkSeed, 4)
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -154,44 +157,67 @@ private fun EntryRow(
             containerColor = if (darkTheme) TodayPalette.foodCard else colors.surfaceContainerLow,
         ),
     ) {
-        Row(
-            modifier = Modifier.padding(start = 12.dp, end = 16.dp, top = 11.dp, bottom = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FoodAvatar(entry.name, expressiveTodayPalette = true)
-            Spacer(Modifier.width(12.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Text(
-                    text = entry.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = stringResource(R.string.quantity_amount, formatAmount(entry.amount), entry.quantityUnit.code),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = secondaryTextColor,
+        Box(Modifier.fillMaxWidth()) {
+            if (darkTheme) {
+                TodayCardArtwork(
+                    modifier = Modifier
+                        .align(
+                            when (artworkPosition) {
+                                0 -> Alignment.TopStart
+                                1 -> Alignment.TopEnd
+                                2 -> Alignment.BottomStart
+                                else -> Alignment.BottomEnd
+                            },
+                        )
+                        .offset(
+                            x = if (artworkPosition % 2 == 0) (-16).dp else 16.dp,
+                            y = if (artworkPosition < 2) (-16).dp else 12.dp,
+                        ),
+                    size = (64 + Math.floorMod(artworkSeed / 13, 12)).dp,
+                    alpha = 0.035f,
+                    shapeIndex = artworkSeed,
+                    rotation = 12f + Math.floorMod(artworkSeed / 19, 45).toFloat(),
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = formatRounded(entry.kcal),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (darkTheme) TodayPalette.carbsAccent else colors.primary,
-                    maxLines = 1,
-                    softWrap = false,
-                )
-                Text(
-                    text = stringResource(R.string.kcal),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor,
-                )
+            Row(
+                modifier = Modifier.padding(start = 12.dp, end = 16.dp, top = 11.dp, bottom = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FoodAvatar(entry.name, expressiveTodayPalette = true)
+                Spacer(Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        text = entry.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = stringResource(R.string.quantity_amount, formatAmount(entry.amount), entry.quantityUnit.code),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = secondaryTextColor,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = formatRounded(entry.kcal),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (darkTheme) TodayPalette.carbsAccent else colors.primary,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                    Text(
+                        text = stringResource(R.string.kcal),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = secondaryTextColor,
+                    )
+                }
             }
         }
     }
@@ -216,6 +242,8 @@ internal fun FoodEntryGroupRow(
     val calorieTextColor = if (darkTheme) TodayPalette.carbsAccent else colors.primary
     val representative = group.representative
     val quantity = group.combinedQuantity()
+    val artworkSeed = representative.name.trim().lowercase().hashCode() + group.count * 31
+    val artworkPosition = Math.floorMod(artworkSeed, 4)
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(durationMillis = 180),
@@ -234,79 +262,102 @@ internal fun FoodEntryGroupRow(
                 containerColor = if (darkTheme) TodayPalette.foodCard else colors.surfaceContainerLow,
             ),
         ) {
-            Row(
-                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 9.dp, bottom = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                FoodAvatar(representative.name, expressiveTodayPalette = true)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            text = representative.name,
-                            modifier = Modifier.weight(1f, fill = false),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Surface(
-                            shape = CircleShape,
-                            color = colors.primary.copy(alpha = 0.12f),
-                            contentColor = colors.primary,
+            Box(Modifier.fillMaxWidth()) {
+                if (darkTheme) {
+                    TodayCardArtwork(
+                        modifier = Modifier
+                            .align(
+                                when (artworkPosition) {
+                                    0 -> Alignment.TopStart
+                                    1 -> Alignment.TopEnd
+                                    2 -> Alignment.BottomStart
+                                    else -> Alignment.BottomEnd
+                                },
+                            )
+                            .offset(
+                                x = if (artworkPosition % 2 == 0) (-18).dp else 18.dp,
+                                y = if (artworkPosition < 2) (-14).dp else 10.dp,
+                            ),
+                        size = (62 + Math.floorMod(artworkSeed / 17, 14)).dp,
+                        alpha = 0.03f,
+                        shapeIndex = artworkSeed,
+                        rotation = 14f + Math.floorMod(artworkSeed / 23, 41).toFloat(),
+                    )
+                }
+                Row(
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 9.dp, bottom = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FoodAvatar(representative.name, expressiveTodayPalette = true)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             Text(
-                                text = stringResource(R.string.food_group_multiplier, group.count),
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.bodyLarge,
+                                text = representative.name,
+                                modifier = Modifier.weight(1f, fill = false),
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
+                            Surface(
+                                shape = CircleShape,
+                                color = colors.primary.copy(alpha = 0.12f),
+                                contentColor = colors.primary,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.food_group_multiplier, group.count),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                )
+                            }
                         }
+                        Text(
+                            text = quantity?.let { (amount, unit) ->
+                                stringResource(
+                                    R.string.quantity_amount,
+                                    formatAmount(amount),
+                                    unit.code,
+                                )
+                            } ?: stringResource(R.string.food_quantity_units_differ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = secondaryTextColor,
+                            maxLines = 1,
+                        )
                     }
-                    Text(
-                        text = quantity?.let { (amount, unit) ->
-                            stringResource(
-                                R.string.quantity_amount,
-                                formatAmount(amount),
-                                unit.code,
-                            )
-                        } ?: stringResource(R.string.food_quantity_units_differ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = secondaryTextColor,
-                        maxLines = 1,
+                    Spacer(Modifier.width(10.dp))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = formatRounded(group.totalKcal),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = calorieTextColor,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                        Text(
+                            text = stringResource(R.string.kcal),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = secondaryTextColor,
+                        )
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        painter = painterResource(R.drawable.ic_expand_more),
+                        contentDescription = stringResource(
+                            if (expanded) R.string.collapse_food_group else R.string.expand_food_group,
+                        ),
+                        tint = secondaryTextColor,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .graphicsLayer { rotationZ = arrowRotation },
                     )
                 }
-                Spacer(Modifier.width(10.dp))
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatRounded(group.totalKcal),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = calorieTextColor,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
-                    Text(
-                        text = stringResource(R.string.kcal),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = secondaryTextColor,
-                    )
-                }
-                Spacer(Modifier.width(6.dp))
-                Icon(
-                    painter = painterResource(R.drawable.ic_expand_more),
-                    contentDescription = stringResource(
-                        if (expanded) R.string.collapse_food_group else R.string.expand_food_group,
-                    ),
-                    tint = secondaryTextColor,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .graphicsLayer { rotationZ = arrowRotation },
-                )
             }
         }
 

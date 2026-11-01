@@ -10,6 +10,9 @@
     <string name="next_month">Luna următoare</string>
 
     <string name="section_stats">Statistici</string>
+    <string name="stats_dashboard_subtitle">Evoluția caloriilor și a macronutrienților din jurnalul tău</string>
+    <string name="stats_empty_title">Încă nu ai statistici</string>
+    <string name="stats_empty_description">Adaugă alimente în jurnalul zilnic pentru a vedea evoluția caloriilor și a macronutrienților.</string>
     <string name="stats_period_7">7 zile</string>
     <string name="stats_period_30">30 zile</string>
     <string name="stats_period_90">90 zile</string>
@@ -27,6 +30,7 @@
     <string name="stats_chart_empty">Nicio înregistrare în perioada selectată</string>
     <string name="stats_macro_contribution">Contribuția macronutrienților la calorii</string>
     <string name="stats_macro_percent">%1$s %2$d%%</string>
+    <string name="stats_percent">%1$d%%</string>
     <string name="stats_no_macro_contribution">Nu există calorii provenite din macronutrienți în această perioadă.</string>
     <string name="stats_period_summary">Rezumatul perioadei</string>
     <string name="stats_highest_day">Ziua cu cele mai multe calorii</string>
@@ -82,6 +86,11 @@
     <string name="chip_food">%1$s · %2$s %3$s</string>
     <string name="frequent_foods">Cele mai frecvente</string>
     <string name="frequent_food_count">%1$d utilizări</string>
+    <plurals name="frequent_food_uses">
+        <item quantity="one">%1$d utilizare</item>
+        <item quantity="few">%1$d utilizări</item>
+        <item quantity="other">%1$d utilizări</item>
+    </plurals>
     <string name="frequent_food_empty">Alimentele înregistrate vor apărea aici.</string>
     <string name="search_foods">Caută alimente salvate</string>
     <string name="search_foods_empty">Nu ai încă alimente salvate pentru căutare.</string>
