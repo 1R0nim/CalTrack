@@ -50,9 +50,9 @@ class MealsViewModel(private val repository: FoodRepository) : ViewModel() {
         query.value = text
     }
 
-    /** Logs [grams] of [food] on [date]; the result is what [undoAdd] needs. */
-    fun add(food: SavedFood, grams: Double, date: LocalDate): Deferred<LoggedFood> =
-        viewModelScope.async { repository.logSavedFood(food, grams, date) }
+    /** Logs [amount] of [food] in its saved unit on [date]; the result is what [undoAdd] needs. */
+    fun add(food: SavedFood, amount: Double, date: LocalDate): Deferred<LoggedFood> =
+        viewModelScope.async { repository.logSavedFood(food, amount, date) }
 
     fun undoAdd(added: Deferred<LoggedFood>) {
         viewModelScope.launch { repository.undoLog(added.await()) }

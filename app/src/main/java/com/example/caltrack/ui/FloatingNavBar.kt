@@ -25,6 +25,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -54,9 +55,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.caltrack.ui.theme.CalTrackTheme
+import com.example.caltrack.ui.today.TodayPalette
+import com.example.caltrack.ui.today.isDarkCalTrackTheme
 import kotlin.math.roundToInt
 
-val FloatingNavBarHeight = 64.dp
+val FloatingNavBarHeight = 60.dp
 
 /** Gap between the bar and the system navigation bar. */
 val FloatingNavBarBottomGap = 12.dp
@@ -64,12 +67,10 @@ val FloatingNavBarBottomGap = 12.dp
 /** Bottom space (on top of the system bar inset) content leaves so its last item clears the bar. */
 val FloatingNavBarClearance = FloatingNavBarHeight + FloatingNavBarBottomGap + 16.dp
 
+private val NavItemInset = 4.dp
 private val IndicatorInset = 4.dp
 
-/**
- * Floating pill with one equal-width slot per [AppSection]. A single indicator pill slides behind
- * the active slot; both the slide and the color crossfades are applied in the layout/draw phases.
- */
+/** Floating blue-grey navigation pill with one equal-width slot per [AppSection]. */
 @Composable
 fun FloatingNavBar(
     selected: AppSection,
@@ -78,7 +79,22 @@ fun FloatingNavBar(
 ) {
     val sections = AppSection.entries
     val haptics = LocalHapticFeedback.current
-    // Fractional slot index of the indicator
+    val colorScheme = MaterialTheme.colorScheme
+    val darkTheme = colorScheme.isDarkCalTrackTheme()
+    val containerColor = if (darkTheme) {
+        TodayPalette.navigationSurface
+    } else {
+        colorScheme.surfaceContainerHighest.copy(alpha = 0.94f)
+    }
+    val selectedSurfaceColor = if (darkTheme) TodayPalette.navigationSelected else colorScheme.secondaryContainer
+    val borderColor = if (darkTheme) {
+        Color.White.copy(alpha = 0.06f)
+    } else {
+        colorScheme.outlineVariant.copy(alpha = 0.32f)
+    }
+    val inactiveTint = if (darkTheme) TodayPalette.secondaryText else colorScheme.onSurfaceVariant
+    val selectedIconTint = if (darkTheme) TodayPalette.primaryText else colorScheme.onSecondaryContainer
+    val selectedLabelTint = if (darkTheme) TodayPalette.primaryText else colorScheme.onSecondaryContainer
     val indicator = remember { Animatable(selected.ordinal.toFloat()) }
     LaunchedEffect(selected) {
         indicator.animateTo(
@@ -89,12 +105,13 @@ fun FloatingNavBar(
 
     Surface(
         modifier = modifier
-            .widthIn(max = 420.dp)
-            .fillMaxWidth()
+            .fillMaxWidth(0.74f)
+            .widthIn(max = 300.dp)
             .height(FloatingNavBarHeight),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.94f),
+        color = containerColor,
         shadowElevation = 6.dp,
+        border = BorderStroke(1.dp, borderColor),
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val slotWidth = maxWidth / sections.size
@@ -104,7 +121,7 @@ fun FloatingNavBar(
                     .fillMaxHeight()
                     .offset { IntOffset((indicator.value * slotWidth.toPx()).roundToInt(), 0) }
                     .padding(IndicatorInset)
-                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+                    .background(selectedSurfaceColor, CircleShape),
             )
             Row(
                 Modifier
@@ -115,6 +132,10 @@ fun FloatingNavBar(
                     NavBarItem(
                         section = section,
                         selected = section == selected,
+                        iconTint = inactiveTint,
+                        selectedIconTint = selectedIconTint,
+                        labelTint = inactiveTint,
+                        selectedLabelTint = selectedLabelTint,
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                             onSelect(section)
@@ -131,10 +152,13 @@ fun FloatingNavBar(
 private fun NavBarItem(
     section: AppSection,
     selected: Boolean,
+    iconTint: Color,
+    selectedIconTint: Color,
+    labelTint: Color,
+    selectedLabelTint: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
     val label = stringResource(section.label)
     // 0 = inactive look, 1 = active look; crossfades two pre-styled layers instead of recoloring
     val progress = remember { Animatable(if (selected) 1f else 0f) }
@@ -145,8 +169,8 @@ private fun NavBarItem(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .padding(IndicatorInset)
-            // Ripple stays inside the indicator's pill
+            .padding(NavItemInset)
+            // Keep ripple feedback within this tab's pill-shaped touch target
             .clip(CircleShape)
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
             .semantics { contentDescription = label },
@@ -155,14 +179,16 @@ private fun NavBarItem(
         NavBarItemLayer(
             icon = section.icon,
             label = label,
-            color = colors.onSurfaceVariant,
+            iconTint = iconTint,
+            labelColor = labelTint,
             fontWeight = FontWeight.Normal,
             modifier = Modifier.graphicsLayer { alpha = 1f - progress.value },
         )
         NavBarItemLayer(
             icon = section.selectedIcon,
             label = label,
-            color = colors.onSecondaryContainer,
+            iconTint = selectedIconTint,
+            labelColor = selectedLabelTint,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.graphicsLayer { alpha = progress.value },
         )
@@ -173,7 +199,8 @@ private fun NavBarItem(
 private fun NavBarItemLayer(
     @DrawableRes icon: Int,
     label: String,
-    color: Color,
+    iconTint: Color,
+    labelColor: Color,
     fontWeight: FontWeight,
     modifier: Modifier = Modifier,
 ) {
@@ -186,22 +213,22 @@ private fun NavBarItemLayer(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(24.dp),
+            tint = iconTint,
+            modifier = Modifier.size(21.dp),
         )
         Spacer(Modifier.height(2.dp))
         // Shrinks instead of cutting off when a narrow screen or a large font leaves too little room
         BasicText(
             text = label,
             style = MaterialTheme.typography.labelMedium.copy(
-                color = color,
+                color = labelColor,
                 fontWeight = fontWeight,
                 letterSpacing = 0.sp,
                 textAlign = TextAlign.Center,
             ),
             maxLines = 1,
             softWrap = false,
-            autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 12.sp, stepSize = 0.5.sp),
+            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 12.sp, stepSize = 0.5.sp),
         )
     }
 }

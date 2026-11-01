@@ -57,10 +57,11 @@ import com.example.caltrack.ui.formatAmount
 import com.example.caltrack.ui.formatRounded
 import com.example.caltrack.ui.parseAmount
 import com.example.caltrack.ui.theme.FieldShape
+import com.example.caltrack.ui.theme.calTrackSurfaceOutline
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
 
-private val QuickGrams = listOf(50, 100, 150, 200)
+private val QuickAmounts = listOf(50, 100, 150, 200)
 
 /**
  * Long-press sheet for a saved food: pick a portion and add it, or edit / delete the food.
@@ -70,7 +71,7 @@ private val QuickGrams = listOf(50, 100, 150, 200)
 @Composable
 fun MealSheet(
     food: SavedFood,
-    onAdd: (grams: Double) -> Unit,
+    onAdd: (amount: Double) -> Unit,
     onUpdate: (SavedFood) -> Deferred<Boolean>,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
@@ -90,7 +91,14 @@ fun MealSheet(
         scope.launch { sheetState.hide() }.invokeOnCompletion { then() }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.calTrackSurfaceOutline(MaterialTheme.shapes.extraLarge),
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
         // The sheet already pads itself above the keyboard; scrolling covers small screens
         Column(
             Modifier
@@ -102,7 +110,7 @@ fun MealSheet(
             } else {
                 AddMealContent(
                     food = food,
-                    onAdd = { grams -> close { onAdd(grams) } },
+                    onAdd = { amount -> close { onAdd(amount) } },
                     onEdit = { editing = true },
                     onDelete = { confirmDelete = true },
                 )
@@ -113,6 +121,9 @@ fun MealSheet(
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
+            modifier = Modifier.calTrackSurfaceOutline(MaterialTheme.shapes.extraLarge),
+            shape = MaterialTheme.shapes.extraLarge,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(stringResource(R.string.delete_meal_title, food.name)) },
             text = { Text(stringResource(R.string.delete_meal_text)) },
             confirmButton = {
@@ -142,8 +153,8 @@ private fun AddMealContent(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    var grams by rememberSaveable { mutableStateOf(formatAmount(food.defaultGrams)) }
-    val portion = parseAmount(grams)?.takeIf { it > 0 }
+    var amount by rememberSaveable { mutableStateOf(formatAmount(food.defaultAmount)) }
+    val portion = parseAmount(amount)?.takeIf { it > 0 }
     // Recomputed on every keystroke
     val values = food.toEntry(portion ?: 0.0)
     val add = { if (portion != null) onAdd(portion) }
@@ -162,10 +173,10 @@ private fun AddMealContent(
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             AmountField(
-                value = grams,
-                onValueChange = { grams = it },
-                label = stringResource(R.string.grams),
-                unit = stringResource(R.string.grams_unit),
+                value = amount,
+                onValueChange = { amount = it },
+                label = stringResource(R.string.quantity),
+                unit = food.quantityUnit.code,
                 modifier = Modifier.weight(1f),
                 imeAction = ImeAction.Done,
                 onDone = add,
@@ -193,7 +204,11 @@ private fun AddMealContent(
                 )
             }
         }
-        QuickGramsGroup(selected = portion, onSelect = { grams = it.toString() })
+        QuickAmountsGroup(
+            selected = portion,
+            unit = food.quantityUnit.code,
+            onSelect = { amount = it.toString() },
+        )
         Button(
             onClick = add,
             enabled = portion != null,
@@ -225,18 +240,18 @@ private fun AddMealContent(
 /** Connected Expressive button group with common portions; the one matching the field is checked. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun QuickGramsGroup(selected: Double?, onSelect: (Int) -> Unit) {
+private fun QuickAmountsGroup(selected: Double?, unit: String, onSelect: (Int) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
     ) {
-        QuickGrams.forEachIndexed { index, value ->
+        QuickAmounts.forEachIndexed { index, value ->
             ToggleButton(
                 checked = selected == value.toDouble(),
                 onCheckedChange = { onSelect(value) },
                 shapes = when (index) {
                     0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    QuickGrams.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    QuickAmounts.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                 },
                 contentPadding = PaddingValues(horizontal = 8.dp),
@@ -244,13 +259,13 @@ private fun QuickGramsGroup(selected: Double?, onSelect: (Int) -> Unit) {
                     .weight(1f)
                     .semantics { role = Role.RadioButton },
             ) {
-                Text(stringResource(R.string.grams_amount, value), maxLines = 1)
+                Text(stringResource(R.string.quantity_amount, value.toString(), unit), maxLines = 1)
             }
         }
     }
 }
 
-/** Name and per-100 g values; the portion stays whatever was last logged. */
+/** Name and per-100-unit values; the amount stays whatever was last logged. */
 @Composable
 private fun EditMealContent(
     food: SavedFood,
@@ -259,10 +274,10 @@ private fun EditMealContent(
 ) {
     val scope = rememberCoroutineScope()
     var name by rememberSaveable { mutableStateOf(food.name) }
-    var kcal by rememberSaveable { mutableStateOf(formatAmount(food.kcalPer100g)) }
-    var protein by rememberSaveable { mutableStateOf(formatAmount(food.proteinPer100g)) }
-    var carbs by rememberSaveable { mutableStateOf(formatAmount(food.carbsPer100g)) }
-    var fat by rememberSaveable { mutableStateOf(formatAmount(food.fatPer100g)) }
+    var kcal by rememberSaveable { mutableStateOf(formatAmount(food.kcalPer100)) }
+    var protein by rememberSaveable { mutableStateOf(formatAmount(food.proteinPer100)) }
+    var carbs by rememberSaveable { mutableStateOf(formatAmount(food.carbsPer100)) }
+    var fat by rememberSaveable { mutableStateOf(formatAmount(food.fatPer100)) }
     var nameTaken by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     val gramsUnit = stringResource(R.string.grams_unit)
@@ -303,7 +318,7 @@ private fun EditMealContent(
             ),
         )
         Text(
-            text = stringResource(R.string.per_100g),
+            text = stringResource(R.string.per_100_quantity, food.quantityUnit.code),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 4.dp, top = 4.dp),
@@ -370,9 +385,9 @@ private fun editedFood(
 ): SavedFood? {
     return food.copy(
         name = name.trim().ifEmpty { return null },
-        kcalPer100g = parseAmount(kcal) ?: return null,
-        proteinPer100g = parseOptionalAmount(protein) ?: return null,
-        carbsPer100g = parseOptionalAmount(carbs) ?: return null,
-        fatPer100g = parseOptionalAmount(fat) ?: return null,
+        kcalPer100 = parseAmount(kcal) ?: return null,
+        proteinPer100 = parseOptionalAmount(protein) ?: return null,
+        carbsPer100 = parseOptionalAmount(carbs) ?: return null,
+        fatPer100 = parseOptionalAmount(fat) ?: return null,
     )
 }

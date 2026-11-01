@@ -1,12 +1,13 @@
 package com.example.caltrack.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.LocalDate
 
 /**
- * One logged item. Nutrition values are absolute for the eaten portion (not per 100 g),
+ * One logged item. Nutrition values are absolute for the eaten portion (not per 100 units),
  * so editing or deleting a [SavedFood] never changes history.
  */
 @Entity(
@@ -16,7 +17,9 @@ import java.time.LocalDate
 data class FoodEntry(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val grams: Double,
+    /** Kept in the legacy `grams` database column; interpreted according to [quantityUnit]. */
+    @ColumnInfo(name = "grams") val amount: Double,
+    @ColumnInfo(defaultValue = "'g'") val quantityUnit: FoodQuantityUnit = FoodQuantityUnit.GRAMS,
     val kcal: Double,
     val protein: Double,
     val carbs: Double,

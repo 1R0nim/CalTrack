@@ -6,11 +6,20 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.caltrack.CalTrackApp
+import com.example.caltrack.data.BarcodeLookupFailure
+import com.example.caltrack.data.BarcodeLookupResult
+import com.example.caltrack.data.BarcodeLookupUiState
+import com.example.caltrack.data.BarcodeProduct
 import com.example.caltrack.data.FoodRepository
 import com.example.caltrack.data.FrequentFood
+import com.example.caltrack.data.OpenFoodFactsClient
+import com.example.caltrack.data.normalizeFoodBarcode
+import com.example.caltrack.data.toBarcodeProduct
 import com.example.caltrack.data.local.entity.FoodEntry
 import com.example.caltrack.data.local.entity.SavedFood
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +48,10 @@ data class TodayUiState(
     val isLoading: Boolean = true,
 )
 
-class TodayViewModel(private val repository: FoodRepository) : ViewModel() {
+class TodayViewModel(
+    private val repository: FoodRepository,
+    private val openFoodFactsClient: OpenFoodFactsClient,
+) : ViewModel() {
 
     // null follows the calendar, so an app left open overnight doesn't keep logging into yesterday
     private val pinnedDate = MutableStateFlow<LocalDate?>(null)
@@ -76,6 +88,10 @@ class TodayViewModel(private val repository: FoodRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _editingEntry = MutableStateFlow<FoodEntry?>(null)
+    private val _barcodeLookupState = MutableStateFlow<BarcodeLookupUiState>(BarcodeLookupUiState.Idle)
+    private var barcodeLookupJob: Job? = null
+
+    val barcodeLookupState: StateFlow<BarcodeLookupUiState> = _barcodeLookupState.asStateFlow()
 
     /** Entry open in the editor sheet (id 0 = new entry); null while the sheet is closed. */
     val editingEntry: StateFlow<FoodEntry?> = _editingEntry.asStateFlow()
@@ -94,9 +110,10 @@ class TodayViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     fun startAdding() {
+        clearBarcodeLookup()
         _editingEntry.value = FoodEntry(
             name = "",
-            grams = 0.0,
+            amount = 0.0,
             kcal = 0.0,
             protein = 0.0,
             carbs = 0.0,
@@ -110,12 +127,48 @@ class TodayViewModel(private val repository: FoodRepository) : ViewModel() {
     }
 
     fun closeEditor() {
+        clearBarcodeLookup()
         _editingEntry.value = null
     }
 
-    fun saveEntry(entry: FoodEntry) {
+    fun clearBarcodeLookup() {
+        barcodeLookupJob?.cancel()
+        barcodeLookupJob = null
+        _barcodeLookupState.value = BarcodeLookupUiState.Idle
+    }
+
+    fun lookupBarcode(rawBarcode: String) {
+        if (_barcodeLookupState.value == BarcodeLookupUiState.Loading) return
+        val barcode = normalizeFoodBarcode(rawBarcode)
+        if (barcode == null) {
+            _barcodeLookupState.value =
+                BarcodeLookupUiState.Failed(BarcodeLookupFailure.INVALID_BARCODE)
+            return
+        }
+
+        barcodeLookupJob?.cancel()
+        _barcodeLookupState.value = BarcodeLookupUiState.Loading
+        barcodeLookupJob = viewModelScope.launch {
+            val result = try {
+                repository.findSavedFoodByBarcode(barcode)
+                    ?.let { BarcodeLookupResult.Found(it.toBarcodeProduct()) }
+                    ?: openFoodFactsClient.lookup(barcode)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                BarcodeLookupResult.Failed(BarcodeLookupFailure.UNKNOWN)
+            }
+            _barcodeLookupState.value = when (result) {
+                is BarcodeLookupResult.Found -> BarcodeLookupUiState.Found(result.product)
+                is BarcodeLookupResult.NotFound -> BarcodeLookupUiState.NotFound(result.barcode)
+                is BarcodeLookupResult.Failed -> BarcodeLookupUiState.Failed(result.reason)
+            }
+        }
+    }
+
+    fun saveEntry(entry: FoodEntry, scannedProduct: BarcodeProduct? = null) {
         closeEditor()
-        viewModelScope.launch { repository.saveEntry(entry) }
+        viewModelScope.launch { repository.saveEntry(entry, scannedProduct) }
     }
 
     fun deleteEntry(entry: FoodEntry) {
@@ -133,7 +186,7 @@ class TodayViewModel(private val repository: FoodRepository) : ViewModel() {
         val Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as CalTrackApp
-                TodayViewModel(app.repository)
+                TodayViewModel(app.repository, app.openFoodFactsClient)
             }
         }
     }

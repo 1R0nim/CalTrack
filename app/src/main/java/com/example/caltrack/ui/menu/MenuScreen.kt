@@ -63,6 +63,7 @@ import com.example.caltrack.ui.components.ScreenTitle
 import com.example.caltrack.ui.theme.CalTrackTheme
 import com.example.caltrack.ui.theme.DynamicColorSupported
 import com.example.caltrack.ui.theme.SmallCardShape
+import com.example.caltrack.ui.theme.calTrackSurfaceBorder
 
 /** [contentPadding] already includes the space the floating bar covers. */
 @Composable
@@ -157,6 +158,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
             .padding(horizontal = 16.dp),
         shape = SmallCardShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
+        border = calTrackSurfaceBorder(),
     ) {
         Column(Modifier.padding(20.dp), content = content)
     }

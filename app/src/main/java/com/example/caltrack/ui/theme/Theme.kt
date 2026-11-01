@@ -4,7 +4,6 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
-import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
@@ -20,12 +19,9 @@ fun CalTrackTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && DynamicColorSupported -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> GreenDarkColorScheme
+        // Keep the AMOLED palette stable even when wallpaper colors are enabled.
+        darkTheme -> AmoledBlackColorScheme
+        dynamicColor && DynamicColorSupported -> dynamicLightColorScheme(LocalContext.current)
         else -> GreenLightColorScheme
     }
 

@@ -47,7 +47,8 @@ abstract class SavedFoodDao {
     /** Saves edits; false when the new name already belongs to another food. */
     suspend fun update(food: SavedFood): Boolean =
         try {
-            updateRow(food.normalized())
+            val existingNameKey = getById(food.id)?.nameKey
+            updateRow(food.normalized(existingNameKey))
             true
         } catch (_: SQLiteConstraintException) {
             false
@@ -66,18 +67,44 @@ abstract class SavedFoodDao {
     open suspend fun recordUse(food: SavedFood) {
         val now = System.currentTimeMillis()
         val normalized = food.normalized()
-        val existing = findByKey(normalized.nameKey)
+        val existingByBarcode = normalized.barcode?.let { findByBarcode(it) }
+        val existingByName = findByKey(normalized.nameKey)
+        val existing = existingByBarcode ?: existingByName
+        if (
+            existingByBarcode != null &&
+            existingByName != null &&
+            existingByBarcode.id != existingByName.id
+        ) {
+            // A renamed product collides with another saved food; retain both records safely.
+            updateRow(existingByBarcode.copy(useCount = existingByBarcode.useCount + 1, lastUsedAt = now))
+            return
+        }
         if (existing == null) {
             insertRow(normalized.copy(id = 0, useCount = 1, lastUsedAt = now))
         } else {
-            updateRow(
-                normalized.copy(
-                    id = existing.id,
-                    barcode = food.barcode ?: existing.barcode,
-                    useCount = existing.useCount + 1,
-                    lastUsedAt = now,
+            val barcodeBelongsToAnotherFood =
+                existingByBarcode == null &&
+                    normalized.barcode != null &&
+                    existing.barcode != null &&
+                    normalized.barcode != existing.barcode
+            if (barcodeBelongsToAnotherFood) {
+                // A same-name food with another barcode is not the scanned product.
+                updateRow(existing.copy(useCount = existing.useCount + 1, lastUsedAt = now))
+            } else {
+                updateRow(
+                    normalized.copy(
+                        id = existing.id,
+                        barcode = normalized.barcode ?: existing.barcode,
+                        dataSource = if (normalized.dataSource == "manual") existing.dataSource else normalized.dataSource,
+                        brand = normalized.brand ?: existing.brand,
+                        productQuantity = normalized.productQuantity ?: existing.productQuantity,
+                        servingSize = normalized.servingSize ?: existing.servingSize,
+                        imageUrl = normalized.imageUrl ?: existing.imageUrl,
+                        useCount = existing.useCount + 1,
+                        lastUsedAt = now,
+                    )
                 )
-            )
+            }
         }
     }
 }

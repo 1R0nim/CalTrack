@@ -17,8 +17,9 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,8 +53,10 @@ import com.example.caltrack.ui.meals.MealsRoute
 import com.example.caltrack.ui.meals.MealsViewModel
 import com.example.caltrack.ui.stats.StatisticsRoute
 import com.example.caltrack.ui.stats.StatisticsViewModel
+import com.example.caltrack.ui.today.TodayPalette
 import com.example.caltrack.ui.today.TodayRoute
 import com.example.caltrack.ui.today.TodayViewModel
+import com.example.caltrack.ui.today.isDarkCalTrackTheme
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
 
@@ -68,7 +71,7 @@ enum class AppSection(
     Menu(R.string.section_menu, R.drawable.ic_menu, R.drawable.ic_menu_filled),
 }
 
-private val FabSize = 56.dp
+private val FabSize = 50.dp
 private val FabGap = 16.dp
 
 /** Extra bottom space on Azi so the last row also clears the + button above the bar. */
@@ -92,6 +95,7 @@ fun CalTrackAppShell(
     val sectionStates = rememberSaveableStateHolder()
     val motionScheme = MaterialTheme.motionScheme
     val layoutDirection = LocalLayoutDirection.current
+    val darkTheme = MaterialTheme.colorScheme.isDarkCalTrackTheme()
 
     BackHandler(enabled = section != AppSection.Today) { section = AppSection.Today }
 
@@ -107,7 +111,18 @@ fun CalTrackAppShell(
         } == SnackbarResult.ActionPerformed
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        containerColor = if (section == AppSection.Today && darkTheme) {
+            TodayPalette.background
+        } else {
+            MaterialTheme.colorScheme.background
+        },
+        contentColor = if (section == AppSection.Today && darkTheme) {
+            TodayPalette.primaryText
+        } else {
+            MaterialTheme.colorScheme.onBackground
+        },
+    ) { innerPadding ->
         val fabVisible = section == AppSection.Today
         fun screenPadding(extraBottom: Dp = 0.dp) = PaddingValues(
             start = innerPadding.calculateStartPadding(layoutDirection),
@@ -170,13 +185,14 @@ fun CalTrackAppShell(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(end = 24.dp, bottom = FloatingNavBarBottomGap + FloatingNavBarHeight + FabGap),
+                    .padding(end = 20.dp, bottom = FloatingNavBarBottomGap + FloatingNavBarHeight + FabGap)
             ) {
                 FloatingActionButton(
                     onClick = todayViewModel::startAdding,
-                    shape = CircleShape,
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(FabSize),
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = if (darkTheme) TodayPalette.calorieCard else MaterialTheme.colorScheme.primary,
+                    contentColor = if (darkTheme) TodayPalette.calorieText else MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_add),
@@ -191,7 +207,7 @@ fun CalTrackAppShell(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(start = 24.dp, end = 24.dp, bottom = FloatingNavBarBottomGap),
+                    .padding(bottom = FloatingNavBarBottomGap),
             )
 
             // Above the bar, and above the + button while it's shown

@@ -2,6 +2,7 @@ package com.example.caltrack.ui.today
 
 import android.content.res.Configuration
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,11 +84,17 @@ fun TodayRoute(
         // Food suggestions are collected only while the form is open
         val frequentFoods by viewModel.frequentFoods.collectAsStateWithLifecycle()
         val savedFoods by viewModel.savedFoods.collectAsStateWithLifecycle()
+        val barcodeLookupState by viewModel.barcodeLookupState.collectAsStateWithLifecycle()
         EntryEditorSheet(
             entry = entry,
             frequentFoods = frequentFoods,
             savedFoods = savedFoods,
-            onSave = viewModel::saveEntry,
+            barcodeLookupState = barcodeLookupState,
+            onBarcodeScanned = viewModel::lookupBarcode,
+            onClearBarcodeLookup = viewModel::clearBarcodeLookup,
+            onSave = { foodEntry, scannedProduct ->
+                viewModel.saveEntry(foodEntry, scannedProduct)
+            },
             onDismiss = viewModel::closeEditor,
         )
     }
@@ -147,7 +154,12 @@ fun TodayScreen(
         dayOffset.animateTo(0f, motionScheme.defaultSpatialSpec())
     }
 
-    Column(modifier.fillMaxSize()) {
+    val screenBackground = if (MaterialTheme.colorScheme.isDarkCalTrackTheme()) {
+        TodayPalette.background
+    } else {
+        MaterialTheme.colorScheme.background
+    }
+    Column(modifier.fillMaxSize().background(screenBackground)) {
         DayHeader(
             date = state.date,
             today = state.today,
@@ -183,7 +195,7 @@ fun TodayScreen(
                 listState = listState,
                 contentPadding = PaddingValues(
                     start = start + 16.dp,
-                    top = 4.dp,
+                    top = 22.dp,
                     end = end + 16.dp,
                     bottom = contentPadding.calculateBottomPadding(),
                 ),
@@ -213,50 +225,89 @@ private fun DayContent(
     modifier: Modifier = Modifier,
 ) {
     val motionScheme = MaterialTheme.motionScheme
+    val groupedEntries = remember(state.entries) { groupFoodEntries(state.entries) }
+    var expandedGroups by remember(state.date) {
+        mutableStateOf<Set<FoodEntryGroupingKey>>(emptySet())
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = listState,
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item(key = "calories") { CaloriesCard(kcal = state.kcal) }
-        item(key = "macros") { MacroRow(carbs = state.carbs, fat = state.fat, protein = state.protein) }
-        item(key = "split") { MacroSplitCard(carbs = state.carbs, fat = state.fat, protein = state.protein) }
+        item(key = "calories") {
+            CaloriesCard(kcal = state.kcal, modifier = Modifier.padding(bottom = 8.dp))
+        }
+        item(key = "macro-cards") {
+            MacroCardsRow(
+                carbs = state.carbs,
+                fat = state.fat,
+                protein = state.protein,
+                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+            )
+        }
+        item(key = "macro-distribution") {
+            MacroDistributionCard(carbs = state.carbs, fat = state.fat, protein = state.protein)
+        }
         item(key = "header") {
             Text(
                 text = stringResource(R.string.foods),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp, top = 12.dp),
+                modifier = Modifier.padding(start = 8.dp, top = 18.dp),
             )
         }
         if (state.entries.isEmpty() && !state.isLoading) {
             item(key = "empty") { EmptyDay() }
         }
-        itemsIndexed(state.entries, key = { _, entry -> entry.id }) { index, entry ->
-            SwipeToDeleteEntry(
-                entry = entry,
-                index = index,
-                onClick = { onEntryClick(entry) },
-                onDelete = { onDeleteEntry(entry) },
-                restored = entry.id == restoredId,
-                onRestoredShown = onRestoredShown,
-                // Rows run their own entrance animation, so only placement and removal animate here
-                modifier = Modifier.animateItem(
-                    fadeInSpec = null,
-                    placementSpec = motionScheme.defaultSpatialSpec(),
-                    fadeOutSpec = motionScheme.fastEffectsSpec(),
-                ),
+        itemsIndexed(groupedEntries, key = { _, group -> group.key.toString() }) { index, group ->
+            val rowShape = foodEntryRowShape(index, groupedEntries.size)
+            val itemModifier = Modifier.animateItem(
+                fadeInSpec = null,
+                placementSpec = motionScheme.defaultSpatialSpec(),
+                fadeOutSpec = motionScheme.fastEffectsSpec(),
             )
+            if (group.count == 1) {
+                val entry = group.entries.single()
+                SwipeToDeleteEntry(
+                    entry = entry,
+                    index = index,
+                    onClick = { onEntryClick(entry) },
+                    onDelete = { onDeleteEntry(entry) },
+                    shape = rowShape,
+                    restored = entry.id == restoredId,
+                    onRestoredShown = onRestoredShown,
+                    modifier = itemModifier,
+                )
+            } else {
+                FoodEntryGroupRow(
+                    group = group,
+                    expanded = group.key in expandedGroups,
+                    index = index,
+                    onToggle = {
+                        expandedGroups = if (group.key in expandedGroups) {
+                            expandedGroups - group.key
+                        } else {
+                            expandedGroups + group.key
+                        }
+                    },
+                    onEntryClick = onEntryClick,
+                    onDeleteEntry = onDeleteEntry,
+                    restoredId = restoredId,
+                    onRestoredShown = onRestoredShown,
+                    modifier = itemModifier,
+                    shape = rowShape,
+                )
+            }
         }
     }
 }
 
 private val previewEntries = listOf(
-    FoodEntry(id = 1, name = "Ovăz cu lapte și banană", grams = 320.0, kcal = 410.0, protein = 14.0, carbs = 68.0, fat = 9.0, date = LocalDate.now()),
-    FoodEntry(id = 2, name = "Luca traditional", grams = 120.0, kcal = 300.0, protein = 13.0, carbs = 40.0, fat = 10.0, date = LocalDate.now()),
-    FoodEntry(id = 3, name = "Piept de pui la grătar", grams = 180.0, kcal = 297.0, protein = 55.8, carbs = 0.0, fat = 6.5, date = LocalDate.now()),
-    FoodEntry(id = 4, name = "Iaurt grecesc", grams = 150.5, kcal = 145.5, protein = 15.0, carbs = 6.0, fat = 7.5, date = LocalDate.now()),
+    FoodEntry(id = 1, name = "Ovăz cu lapte și banană", amount = 320.0, kcal = 410.0, protein = 14.0, carbs = 68.0, fat = 9.0, date = LocalDate.now()),
+    FoodEntry(id = 2, name = "Luca traditional", amount = 120.0, kcal = 300.0, protein = 13.0, carbs = 40.0, fat = 10.0, date = LocalDate.now()),
+    FoodEntry(id = 3, name = "Piept de pui la grătar", amount = 180.0, kcal = 297.0, protein = 55.8, carbs = 0.0, fat = 6.5, date = LocalDate.now()),
+    FoodEntry(id = 4, name = "Iaurt grecesc", amount = 150.5, kcal = 145.5, protein = 15.0, carbs = 6.0, fat = 7.5, date = LocalDate.now()),
 )
 
 @Composable

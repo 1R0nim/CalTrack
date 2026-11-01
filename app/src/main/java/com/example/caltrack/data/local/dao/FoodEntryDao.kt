@@ -47,7 +47,10 @@ interface FoodEntryDao {
              ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastLoggedAt,
             (SELECT latest.grams FROM food_entries AS latest
              WHERE lower(trim(latest.name)) = lower(trim(logged.name))
-             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastGrams,
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastAmount,
+            (SELECT latest.quantityUnit FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastQuantityUnit,
             (SELECT latest.kcal FROM food_entries AS latest
              WHERE lower(trim(latest.name)) = lower(trim(logged.name))
              ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastKcal,

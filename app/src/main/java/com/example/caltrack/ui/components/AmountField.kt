@@ -3,9 +3,11 @@ package com.example.caltrack.ui.components
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,15 +25,25 @@ fun AmountField(
     optional: Boolean = false,
     imeAction: ImeAction = ImeAction.Next,
     onDone: () -> Unit = {},
+    textStyle: TextStyle? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = { if (it.isAmountInput()) onValueChange(it) },
         modifier = modifier,
-        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        label = {
+            if (textStyle == null) {
+                Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            } else {
+                Text(label, style = textStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        },
         placeholder = if (optional) ({ Text("0") }) else null,
-        suffix = { Text(unit) },
+        suffix = {
+            if (textStyle == null) Text(unit) else Text(unit, style = textStyle)
+        },
         isError = value.isNotEmpty() && parseAmount(value) == null,
+        textStyle = textStyle ?: LocalTextStyle.current,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = imeAction),
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         singleLine = true,

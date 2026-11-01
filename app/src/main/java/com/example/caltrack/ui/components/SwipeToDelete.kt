@@ -16,6 +16,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -51,6 +52,19 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
 
+/** Interpolates one resting corner into the rounded swipe-to-delete pill. */
+private fun animateCorner(
+    corner: CornerSize,
+    shapeSize: Size,
+    density: androidx.compose.ui.unit.Density,
+    targetRadius: Float,
+    progress: Float,
+): Dp {
+    val start = corner.toPx(shapeSize, density)
+    val radius = start + (targetRadius - start).coerceAtLeast(0f) * progress
+    return with(density) { radius.toDp() }
+}
+
 /** Share of the row's width past which letting go deletes it. */
 private const val DeleteThreshold = 0.4f
 
@@ -74,6 +88,7 @@ fun SwipeToDeleteBox(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 24.dp,
+    restingShape: RoundedCornerShape? = null,
     expandOnEnter: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -186,7 +201,19 @@ fun SwipeToDeleteBox(
                             0f
                         }
                         val rest = cornerRadius.toPx()
-                        shape = RoundedCornerShape(rest + (size.height / 2f - rest).coerceAtLeast(0f) * progress)
+                        val pillRadius = size.height / 2f
+                        val initialShape = restingShape
+                        shape = if (initialShape == null) {
+                            RoundedCornerShape(rest + (pillRadius - rest).coerceAtLeast(0f) * progress)
+                        } else {
+                            val shapeSize = Size(size.width, size.height)
+                            RoundedCornerShape(
+                                topStart = animateCorner(initialShape.topStart, shapeSize, density, pillRadius, progress),
+                                topEnd = animateCorner(initialShape.topEnd, shapeSize, density, pillRadius, progress),
+                                bottomEnd = animateCorner(initialShape.bottomEnd, shapeSize, density, pillRadius, progress),
+                                bottomStart = animateCorner(initialShape.bottomStart, shapeSize, density, pillRadius, progress),
+                            )
+                        }
                         clip = true
                     }
                     .draggable(

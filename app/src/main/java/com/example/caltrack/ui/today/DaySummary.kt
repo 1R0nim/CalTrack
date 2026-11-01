@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -25,7 +25,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -37,8 +36,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.material3.toShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.caltrack.R
@@ -50,36 +52,62 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CaloriesCard(kcal: Double, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val darkTheme = colors.isDarkCalTrackTheme()
+    val cardColor = if (darkTheme) TodayPalette.calorieCard else colors.surfaceContainerLow
+    val calorieTextColor = if (darkTheme) TodayPalette.calorieText else colors.onSurface
+    val supportingTextColor = if (darkTheme) {
+        TodayPalette.calorieText.copy(alpha = 0.76f)
+    } else {
+        colors.onSurfaceVariant
+    }
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = HeroCardShape,
+        shape = if (darkTheme) HeroCardShape else CardShape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            containerColor = cardColor,
+            contentColor = calorieTextColor,
         ),
     ) {
         Box(Modifier.fillMaxWidth()) {
-            // Decorative cookie shape peeking in from the corner
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 40.dp, y = (-36).dp)
-                    .size(170.dp)
-                    .rotate(18f)
-                    .background(LocalContentColor.current.copy(alpha = 0.12f), MaterialShapes.Cookie9Sided.toShape()),
-            )
-            Column(Modifier.padding(horizontal = 28.dp, vertical = 26.dp)) {
-                Text(stringResource(R.string.calories), style = MaterialTheme.typography.titleMedium)
-                Row {
+            if (darkTheme) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 40.dp, y = (-36).dp)
+                        .size(170.dp)
+                        .rotate(18f)
+                        .background(
+                            LocalContentColor.current.copy(alpha = 0.10f),
+                            MaterialShapes.Cookie9Sided.toShape(),
+                        ),
+                )
+            }
+            Column(
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 25.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.consumed_calories),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = supportingTextColor,
+
+
+                )
+                Row(verticalAlignment = Alignment.Bottom) {
                     AnimatedNumber(
                         value = kcal,
-                        style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = calorieTextColor,
+                        ),
                         modifier = Modifier.alignByBaseline(),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.kcal),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = supportingTextColor,
                         modifier = Modifier.alignByBaseline(),
                     )
                 }
@@ -88,104 +116,123 @@ fun CaloriesCard(kcal: Double, modifier: Modifier = Modifier) {
     }
 }
 
+/** Three individually filled cards keep the nutrients distinct and easy to compare. */
 @Composable
-fun MacroRow(carbs: Double, fat: Double, protein: Double, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        MacroCard(
-            label = stringResource(R.string.carbs),
-            grams = carbs,
-            containerColor = colors.primaryContainer,
-            contentColor = colors.onPrimaryContainer,
-            modifier = Modifier.weight(1f),
-        )
-        MacroCard(
-            label = stringResource(R.string.fat),
-            grams = fat,
-            containerColor = colors.tertiaryContainer,
-            contentColor = colors.onTertiaryContainer,
-            modifier = Modifier.weight(1f),
-        )
-        MacroCard(
-            label = stringResource(R.string.protein),
-            grams = protein,
-            containerColor = colors.secondaryContainer,
-            contentColor = colors.onSecondaryContainer,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun MacroCard(
-    label: String,
-    grams: Double,
-    containerColor: Color,
-    contentColor: Color,
+fun MacroCardsRow(
+    carbs: Double,
+    fat: Double,
+    protein: Double,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier,
-        shape = SmallCardShape,
-        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-    ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-            Spacer(Modifier.height(4.dp))
-            Row {
-                AnimatedNumber(
-                    value = grams,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.alignByBaseline(),
-                )
-                Spacer(Modifier.width(2.dp))
-                Text(
-                    text = stringResource(R.string.grams_unit),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.alignByBaseline(),
-                )
-            }
+    val colors = MaterialTheme.colorScheme
+    val darkTheme = colors.isDarkCalTrackTheme()
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val compact = maxWidth < 420.dp
+        val gap = if (compact) 12.dp else 14.dp
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+        ) {
+            MacroMetric(
+                label = R.string.carbs,
+                grams = carbs,
+                cardColor = if (darkTheme) TodayPalette.carbsCard else colors.surfaceContainerLow,
+                contentColor = if (darkTheme) TodayPalette.primaryText else colors.onSurface,
+                secondaryColor = if (darkTheme) TodayPalette.secondaryText else colors.onSurfaceVariant,
+                compact = compact,
+                modifier = Modifier.weight(1f),
+            )
+            MacroMetric(
+                label = R.string.fat,
+                grams = fat,
+                cardColor = if (darkTheme) TodayPalette.fatCard else colors.surfaceContainerLow,
+                contentColor = if (darkTheme) TodayPalette.calorieText else colors.onSurface,
+                secondaryColor = if (darkTheme) {
+                    TodayPalette.calorieText.copy(alpha = 0.78f)
+                } else {
+                    colors.onSurfaceVariant
+                },
+                compact = compact,
+                modifier = Modifier.weight(1f),
+            )
+            MacroMetric(
+                label = R.string.protein,
+                grams = protein,
+                cardColor = if (darkTheme) TodayPalette.proteinCard else colors.surfaceContainerLow,
+                contentColor = if (darkTheme) TodayPalette.primaryText else colors.onSurface,
+                secondaryColor = if (darkTheme) TodayPalette.secondaryText else colors.onSurfaceVariant,
+                compact = compact,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
-/** Share of calories coming from each macro (4 kcal/g carbs and protein, 9 kcal/g fat). */
+/** Share of calories from each macro: approximately 4 kcal/g for carbs and protein, 9 kcal/g for fat. */
 @Composable
-fun MacroSplitCard(carbs: Double, fat: Double, protein: Double, modifier: Modifier = Modifier) {
+fun MacroDistributionCard(
+    carbs: Double,
+    fat: Double,
+    protein: Double,
+    modifier: Modifier = Modifier,
+) {
     val colors = MaterialTheme.colorScheme
+    val darkTheme = colors.isDarkCalTrackTheme()
     val energy = listOf(carbs * 4, fat * 9, protein * 4)
     val total = energy.sum()
     val shares = energy.map { if (total > 0) (it / total).toFloat() else 0f }
+    val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val animatedShares = shares.map { animateFloatAsState(it, spatial, label = "share").value }
     val segmentColors = listOf(colors.primary, colors.tertiary, colors.secondary)
-    val labels = listOf(R.string.carbs, R.string.fat, R.string.protein)
+    val labels = listOf("C", "G", "P")
+    val visibleSegments = animatedShares.withIndex().filter { it.value > MinimumVisibleMacroShare }
+    val primaryTextColor = if (darkTheme) TodayPalette.primaryText else colors.onSurface
+    val secondaryTextColor = if (darkTheme) TodayPalette.secondaryText else colors.onSurfaceVariant
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
-        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(
+            containerColor = if (darkTheme) TodayPalette.distributionCard else colors.surfaceContainerLow,
+        ),
     ) {
-        Column(Modifier.padding(horizontal = 24.dp, vertical = 20.dp)) {
-            Text(stringResource(R.string.calorie_split), style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(14.dp))
-            SegmentedBar(shares = shares, colors = segmentColors, trackColor = colors.surfaceContainerHighest)
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                shares.forEachIndexed { index, share ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier
-                                .size(10.dp)
-                                .background(segmentColors[index], CircleShape),
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.calorie_split),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = primaryTextColor,
+            )
+            SegmentedBar(
+                shares = animatedShares,
+                colors = segmentColors,
+                trackColor = if (darkTheme) TodayPalette.proteinCard else colors.surfaceContainerHighest,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (visibleSegments.isEmpty()) {
+                    labels.forEachIndexed { index, label ->
+                        MacroLegend(
+                            label = label,
+                            share = animatedShares[index],
+                            primaryTextColor = primaryTextColor,
+                            secondaryTextColor = secondaryTextColor,
+                            modifier = Modifier.weight(1f),
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(labels[index]) + " " +
-                                stringResource(R.string.percent, (share * 100).roundToInt()),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = colors.onSurfaceVariant,
+                    }
+                } else {
+                    visibleSegments.forEach { (index, share) ->
+                        MacroLegend(
+                            label = labels[index],
+                            share = share,
+                            primaryTextColor = primaryTextColor,
+                            secondaryTextColor = secondaryTextColor,
+                            modifier = Modifier.weight(share),
                         )
                     }
                 }
@@ -195,9 +242,107 @@ fun MacroSplitCard(carbs: Double, fat: Double, protein: Double, modifier: Modifi
 }
 
 @Composable
+private fun MacroMetric(
+    label: Int,
+    grams: Double,
+    cardColor: Color,
+    contentColor: Color,
+    secondaryColor: Color,
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.height(84.dp),
+        shape = SmallCardShape,
+        colors = CardDefaults.cardColors(
+            containerColor = cardColor,
+            contentColor = contentColor,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = if (compact) 16.dp else 18.dp,
+                    end = if (compact) 16.dp else 18.dp,
+                    top = 12.dp,
+                    bottom = 8.dp,
+                ),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(22.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start,
+            ) {
+                Text(
+                    text = stringResource(label),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor,
+                    maxLines = 1,
+                    textAlign = TextAlign.Start,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Start,
+            ) {
+                AnimatedNumber(
+                    value = grams,
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.alignByBaseline(),
+                )
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    text = stringResource(R.string.grams_unit),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondaryColor,
+                    modifier = Modifier.alignByBaseline(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MacroLegend(
+    label: String,
+    share: Float,
+    primaryTextColor: Color,
+    secondaryTextColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = secondaryTextColor,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+        Text(
+            text = stringResource(R.string.percent, (share * 100).roundToInt()),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = primaryTextColor,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+    }
+}
+
+private const val MinimumVisibleMacroShare = 0.005f
+
+@Composable
 private fun SegmentedBar(shares: List<Float>, colors: List<Color>, trackColor: Color) {
-    val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
-    val animated = shares.map { animateFloatAsState(it, spatial, label = "share").value }
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -205,7 +350,7 @@ private fun SegmentedBar(shares: List<Float>, colors: List<Color>, trackColor: C
     ) {
         val radius = CornerRadius(size.height / 2)
         // The spring can overshoot slightly below zero; such segments are simply not drawn
-        val visible = animated.withIndex().filter { it.value > 0.005f }
+        val visible = shares.withIndex().filter { it.value > MinimumVisibleMacroShare }
         if (visible.isEmpty()) {
             drawRoundRect(trackColor, cornerRadius = radius)
             return@Canvas
@@ -229,7 +374,7 @@ private fun AnimatedNumber(value: Double, style: TextStyle, modifier: Modifier =
     val initial = if (LocalInspectionMode.current) value.toFloat() else 0f
     val animated = remember { Animatable(initial) }
     LaunchedEffect(value) {
-        animated.animateTo(value.toFloat(), tween(durationMillis = 700, easing = FastOutSlowInEasing))
+        animated.animateTo(value.toFloat(), tween(durationMillis = 360, easing = FastOutSlowInEasing))
     }
     Text(
         text = animated.value.roundToInt().toString(),

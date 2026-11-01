@@ -12,7 +12,7 @@ import com.example.caltrack.data.local.entity.SavedFood
 
 @Database(
     entities = [FoodEntry::class, SavedFood::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -34,7 +34,7 @@ abstract class CalTrackDatabase : RoomDatabase() {
                     CalTrackDatabase::class.java,
                     "caltrack.db",
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { instance = it }
             }

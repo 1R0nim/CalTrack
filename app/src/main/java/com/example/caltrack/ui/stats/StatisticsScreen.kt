@@ -38,6 +38,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -53,6 +54,7 @@ import com.example.caltrack.ui.components.ScreenTitle
 import com.example.caltrack.ui.theme.CalTrackTheme
 import com.example.caltrack.ui.theme.CardShape
 import com.example.caltrack.ui.theme.SmallCardShape
+import com.example.caltrack.ui.theme.calTrackSurfaceBorder
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -178,6 +180,7 @@ private fun AverageCaloriesCard(summary: StatisticsSummary) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = CardShape,
+        border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -261,12 +264,14 @@ private fun SummaryMetric(
 @Composable
 private fun MacronutrientAveragesCard(summary: StatisticsSummary) {
     val colorScheme = MaterialTheme.colorScheme
+    val darkTheme = colorScheme.background.luminance() < 0.5f
     val hasLoggedDays = summary.totals.loggedDays > 0
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = CardShape,
+        border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(20.dp)) {
@@ -285,6 +290,7 @@ private fun MacronutrientAveragesCard(summary: StatisticsSummary) {
                     total = formatStatNumber(summary.totals.totalCarbs),
                     containerColor = colorScheme.primaryContainer,
                     contentColor = colorScheme.onPrimaryContainer,
+                    accentColor = if (darkTheme) colorScheme.primary else colorScheme.onPrimaryContainer,
                 )
                 MacroAverageCard(
                     modifier = Modifier.weight(1f),
@@ -293,6 +299,7 @@ private fun MacronutrientAveragesCard(summary: StatisticsSummary) {
                     total = formatStatNumber(summary.totals.totalFat),
                     containerColor = colorScheme.tertiaryContainer,
                     contentColor = colorScheme.onTertiaryContainer,
+                    accentColor = if (darkTheme) colorScheme.tertiary else colorScheme.onTertiaryContainer,
                 )
                 MacroAverageCard(
                     modifier = Modifier.weight(1f),
@@ -301,6 +308,7 @@ private fun MacronutrientAveragesCard(summary: StatisticsSummary) {
                     total = formatStatNumber(summary.totals.totalProtein),
                     containerColor = colorScheme.secondaryContainer,
                     contentColor = colorScheme.onSecondaryContainer,
+                    accentColor = if (darkTheme) colorScheme.secondary else colorScheme.onSecondaryContainer,
                 )
             }
         }
@@ -315,16 +323,19 @@ private fun MacroAverageCard(
     total: String,
     containerColor: Color,
     contentColor: Color,
+    accentColor: Color,
 ) {
     Card(
         modifier = modifier,
         shape = SmallCardShape,
+        border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
     ) {
         Column(Modifier.padding(horizontal = 10.dp, vertical = 12.dp)) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
+                color = accentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -333,6 +344,7 @@ private fun MacroAverageCard(
                 text = average,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
+                color = accentColor,
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Clip,
@@ -359,6 +371,7 @@ private fun DailyCaloriesChartCard(summary: StatisticsSummary) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = CardShape,
+        border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(20.dp)) {
@@ -526,6 +539,7 @@ private fun MacroContributionCard(summary: StatisticsSummary) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = CardShape,
+        border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(20.dp)) {
@@ -632,6 +646,7 @@ private fun PeriodHighlightsCard(summary: StatisticsSummary) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = CardShape,
+        border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(20.dp)) {

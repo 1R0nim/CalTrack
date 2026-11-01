@@ -10,12 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -50,7 +47,7 @@ fun DayHeader(
     Box(
         modifier
             .fillMaxWidth()
-            .height(80.dp),
+            .height(64.dp),
     ) {
         Row(
             modifier = Modifier.align(Alignment.Center),
@@ -80,15 +77,21 @@ fun DayHeader(
 
 @Composable
 private fun DatePill(label: String, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val darkTheme = colors.isDarkCalTrackTheme()
     val motionScheme = MaterialTheme.motionScheme
     val pickDay = stringResource(R.string.pick_day)
     FilledTonalButton(
         onClick = onClick,
         shapes = ButtonDefaults.shapes(),
-        contentPadding = PaddingValues(start = 24.dp, end = 16.dp),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = if (darkTheme) TodayPalette.distributionCard else colors.secondaryContainer,
+            contentColor = if (darkTheme) colors.primary else colors.onSecondaryContainer,
+        ),
+        contentPadding = PaddingValues(horizontal = 24.dp),
         modifier = Modifier
-            .heightIn(min = 56.dp)
-            .widthIn(min = 136.dp)
+            .heightIn(min = 48.dp)
+            .widthIn(min = 128.dp)
             .semantics { onClick(label = pickDay) { onClick(); true } },
     ) {
         AnimatedContent(
@@ -99,14 +102,12 @@ private fun DatePill(label: String, onClick: () -> Unit) {
             },
             label = "dayLabel",
         ) { text ->
-            Text(text, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
-        Spacer(Modifier.width(4.dp))
-        Icon(
-            painter = painterResource(R.drawable.ic_expand_more),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-        )
     }
 }
 

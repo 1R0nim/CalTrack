@@ -7,6 +7,11 @@ import androidx.compose.ui.graphics.Color
 // Fixed palette used when wallpaper colors are off (or unavailable before Android 12):
 // Material Theme Builder output for the green seed #63A002.
 
+private val SmokedSurfacePrimary = Color(0xFF080809)
+private val SmokedSurfaceSecondary = Color(0xFF101014)
+private val SmokedSurfaceElevated = Color(0xFF1B1B1F)
+private val PrimaryText = Color(0xFFDCE5FF)
+
 val GreenLightColorScheme = lightColorScheme(
     primary = Color(0xFF4C662B),
     onPrimary = Color(0xFFFFFFFF),
@@ -45,40 +50,40 @@ val GreenLightColorScheme = lightColorScheme(
     surfaceContainerHighest = Color(0xFFE2E3D8),
 )
 
-val GreenDarkColorScheme = darkColorScheme(
-    primary = Color(0xFFB1D18A),
-    onPrimary = Color(0xFF1F3701),
-    primaryContainer = Color(0xFF354E16),
-    onPrimaryContainer = Color(0xFFCDEDA3),
-    secondary = Color(0xFFBFCBAD),
-    onSecondary = Color(0xFF2A331E),
-    secondaryContainer = Color(0xFF404A33),
-    onSecondaryContainer = Color(0xFFDCE7C8),
-    tertiary = Color(0xFFA0D0CB),
-    onTertiary = Color(0xFF003735),
-    tertiaryContainer = Color(0xFF1F4E4B),
-    onTertiaryContainer = Color(0xFFBCECE7),
+val AmoledBlackColorScheme = darkColorScheme(
+    primary = Color(0xFFAFC4FF),
+    onPrimary = Color(0xFF1C2B48),
+    primaryContainer = SmokedSurfaceElevated,
+    onPrimaryContainer = PrimaryText,
+    secondary = Color(0xFFA7B5C7),
+    onSecondary = Color(0xFF202834),
+    secondaryContainer = SmokedSurfaceSecondary,
+    onSecondaryContainer = PrimaryText,
+    tertiary = Color(0xFFD8B4F8),
+    onTertiary = Color(0xFF352044),
+    tertiaryContainer = SmokedSurfaceElevated,
+    onTertiaryContainer = PrimaryText,
     error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF12140E),
-    onBackground = Color(0xFFE2E3D8),
-    surface = Color(0xFF12140E),
-    onSurface = Color(0xFFE2E3D8),
-    surfaceVariant = Color(0xFF44483D),
-    onSurfaceVariant = Color(0xFFC5C8BA),
-    outline = Color(0xFF8F9285),
-    outlineVariant = Color(0xFF44483D),
+    background = Color(0xFF000000),
+    onBackground = PrimaryText,
+    surface = Color(0xFF000000),
+    onSurface = PrimaryText,
+    surfaceVariant = SmokedSurfaceSecondary,
+    onSurfaceVariant = Color(0xFF92929C),
+    outline = Color(0x1AFFFFFF),
+    outlineVariant = Color(0x14FFFFFF),
     scrim = Color(0xFF000000),
-    inverseSurface = Color(0xFFE2E3D8),
-    inverseOnSurface = Color(0xFF2F312A),
-    inversePrimary = Color(0xFF4C662B),
-    surfaceDim = Color(0xFF12140E),
-    surfaceBright = Color(0xFF383A32),
-    surfaceContainerLowest = Color(0xFF0C0F09),
-    surfaceContainerLow = Color(0xFF1A1C16),
-    surfaceContainer = Color(0xFF1E201A),
-    surfaceContainerHigh = Color(0xFF282B24),
-    surfaceContainerHighest = Color(0xFF33362E),
+    inverseSurface = SmokedSurfaceElevated,
+    inverseOnSurface = PrimaryText,
+    inversePrimary = Color(0xFF49618F),
+    surfaceDim = Color(0xFF000000),
+    surfaceBright = SmokedSurfaceElevated,
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = SmokedSurfacePrimary,
+    surfaceContainer = SmokedSurfaceSecondary,
+    surfaceContainerHigh = SmokedSurfaceSecondary,
+    surfaceContainerHighest = SmokedSurfaceElevated,
 )

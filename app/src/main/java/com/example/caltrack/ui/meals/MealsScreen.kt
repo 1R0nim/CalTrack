@@ -78,6 +78,8 @@ import com.example.caltrack.ui.formatAmount
 import com.example.caltrack.ui.formatRounded
 import com.example.caltrack.ui.theme.CalTrackTheme
 import com.example.caltrack.ui.theme.ListItemShape
+import com.example.caltrack.ui.theme.calTrackSurfaceOutline
+import com.example.caltrack.ui.theme.calTrackSurfaceBorder
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -101,8 +103,8 @@ fun MealsRoute(
     // Food brought back by Undo, so its card expands into place
     var restoredId by remember { mutableStateOf<Long?>(null) }
 
-    fun add(food: SavedFood, grams: Double) {
-        val added = viewModel.add(food, grams, selectedDate())
+    fun add(food: SavedFood, amount: Double) {
+        val added = viewModel.add(food, amount, selectedDate())
         scope.launch {
             val undo = onShowSnackbar(resources.getString(R.string.meal_added), resources.getString(R.string.undo))
             if (undo) viewModel.undoAdd(added)
@@ -128,7 +130,7 @@ fun MealsRoute(
         query = query,
         onQueryChange = { query = it },
         contentPadding = contentPadding,
-        onAdd = { food -> add(food, food.defaultGrams) },
+        onAdd = { food -> add(food, food.defaultAmount) },
         onOpen = { food -> sheetFoodId = food.id },
         onDelete = ::deleteWithUndo,
         restoredId = restoredId,
@@ -141,9 +143,9 @@ fun MealsRoute(
         // Adding and deleting also close the sheet; both are called once it has animated away
         MealSheet(
             food = sheetFood,
-            onAdd = { grams ->
+            onAdd = { amount ->
                 sheetFoodId = null
-                add(sheetFood, grams)
+                add(sheetFood, amount)
             },
             onUpdate = viewModel::update,
             onDelete = {
@@ -229,7 +231,8 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, modifier
         onValueChange = onQueryChange,
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp),
+            .heightIn(min = 56.dp)
+            .calTrackSurfaceOutline(CircleShape),
         placeholder = { Text(stringResource(R.string.search_meals)) },
         leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
         trailingIcon = if (query.isNotEmpty()) {
@@ -322,6 +325,7 @@ private fun MealCard(
             ),
         shape = ListItemShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
+        border = calTrackSurfaceBorder(),
     ) {
         Row(
             modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
@@ -337,7 +341,12 @@ private fun MealCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = stringResource(R.string.meal_portion, formatAmount(food.defaultGrams), formatRounded(portion.kcal)),
+                    text = stringResource(
+                        R.string.meal_portion,
+                        formatAmount(food.defaultAmount),
+                        food.quantityUnit.code,
+                        formatRounded(portion.kcal),
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -396,9 +405,9 @@ private fun EmptyMessage(text: String) {
 }
 
 private val previewFoods = listOf(
-    SavedFood(id = 1, name = "Brânză telemea", kcalPer100g = 250.0, proteinPer100g = 17.0, carbsPer100g = 1.0, fatPer100g = 20.0, defaultGrams = 50.0, useCount = 9),
-    SavedFood(id = 2, name = "Luca traditional", kcalPer100g = 250.0, proteinPer100g = 10.8, carbsPer100g = 33.3, fatPer100g = 8.3, defaultGrams = 120.0, useCount = 4),
-    SavedFood(id = 3, name = "Piept de pui", kcalPer100g = 165.0, proteinPer100g = 31.0, carbsPer100g = 0.0, fatPer100g = 3.6, defaultGrams = 180.0, useCount = 2),
+    SavedFood(id = 1, name = "Brânză telemea", kcalPer100 = 250.0, proteinPer100 = 17.0, carbsPer100 = 1.0, fatPer100 = 20.0, defaultAmount = 50.0, useCount = 9),
+    SavedFood(id = 2, name = "Luca traditional", kcalPer100 = 250.0, proteinPer100 = 10.8, carbsPer100 = 33.3, fatPer100 = 8.3, defaultAmount = 120.0, useCount = 4),
+    SavedFood(id = 3, name = "Piept de pui", kcalPer100 = 165.0, proteinPer100 = 31.0, carbsPer100 = 0.0, fatPer100 = 3.6, defaultAmount = 180.0, useCount = 2),
 )
 
 @Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL, widthDp = 360)

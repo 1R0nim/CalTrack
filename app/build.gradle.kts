@@ -59,6 +59,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.play.services.code.scanner)
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)

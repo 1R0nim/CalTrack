@@ -1,5 +1,6 @@
 package com.example.caltrack.data.local.dao
 
+import com.example.caltrack.data.local.entity.FoodQuantityUnit
 import java.time.LocalDate
 
 /** Sum of all entries logged on [date]. */
@@ -18,7 +19,8 @@ data class FoodUsageAggregate(
     val occurrenceCount: Int,
     val lastEntryId: Long,
     val lastLoggedAt: Long,
-    val lastGrams: Double,
+    val lastAmount: Double,
+    val lastQuantityUnit: FoodQuantityUnit,
     val lastKcal: Double,
     val lastProtein: Double,
     val lastCarbs: Double,

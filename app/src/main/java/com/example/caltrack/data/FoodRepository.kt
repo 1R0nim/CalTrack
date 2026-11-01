@@ -32,6 +32,9 @@ class FoodRepository(private val db: CalTrackDatabase) {
     /** Most used first, then most recently used. */
     fun observeSavedFoods(): Flow<List<SavedFood>> = savedFoodDao.observeAll()
 
+    suspend fun findSavedFoodByBarcode(barcode: String): SavedFood? =
+        savedFoodDao.findByBarcode(barcode)
+
     fun observeRecentFoods(limit: Int): Flow<List<SavedFood>> = savedFoodDao.observeRecent(limit)
 
     /** Most common foods from current journal entries, with recent saved foods as an empty-history fallback. */
@@ -46,17 +49,25 @@ class FoodRepository(private val db: CalTrackDatabase) {
 
     /**
      * Inserts or updates [entry]. New entries are also remembered as a [SavedFood] for one-tap
-     * re-logging. Edits only change the entry: fixing just the grams would otherwise skew the
-     * food's per-100 g values.
+     * re-logging. Edits only change the entry: fixing just the amount would otherwise skew the
+     * food's saved per-100-unit values.
      */
-    suspend fun saveEntry(entry: FoodEntry) {
+    suspend fun saveEntry(entry: FoodEntry, scannedProduct: BarcodeProduct? = null) {
         if (entry.id != 0L) {
             entryDao.update(entry)
             return
         }
         db.withTransaction {
             entryDao.insert(entry)
-            SavedFood.fromEntry(entry)?.let { savedFoodDao.recordUse(it) }
+            SavedFood.fromEntry(
+                entry = entry,
+                barcode = scannedProduct?.barcode,
+                dataSource = scannedProduct?.dataSource ?: "manual",
+                brand = scannedProduct?.brand,
+                productQuantity = scannedProduct?.productQuantity,
+                servingSize = scannedProduct?.servingSize,
+                imageUrl = scannedProduct?.imageUrl,
+            )?.let { savedFoodDao.recordUse(it) }
         }
     }
 
@@ -67,13 +78,13 @@ class FoodRepository(private val db: CalTrackDatabase) {
         entryDao.insert(entry)
     }
 
-    /** Logs [grams] of a saved food on [date]; the food remembers the portion and counts the use. */
-    suspend fun logSavedFood(food: SavedFood, grams: Double, date: LocalDate): LoggedFood =
+    /** Logs [amount] of a saved food on [date]; the food remembers the portion and counts the use. */
+    suspend fun logSavedFood(food: SavedFood, amount: Double, date: LocalDate): LoggedFood =
         db.withTransaction {
             val foodBefore = savedFoodDao.getById(food.id)
-            val entry = food.toEntry(grams, date)
+            val entry = food.toEntry(amount, date)
             val id = entryDao.insert(entry)
-            savedFoodDao.recordUse(food.copy(defaultGrams = grams))
+            savedFoodDao.recordUse(food.copy(defaultAmount = amount))
             LoggedFood(entry.copy(id = id), foodBefore)
         }
 

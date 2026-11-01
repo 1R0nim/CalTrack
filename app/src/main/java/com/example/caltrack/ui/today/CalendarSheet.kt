@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +56,7 @@ import com.example.caltrack.R
 import com.example.caltrack.ui.formatMonthYear
 import com.example.caltrack.ui.narrowWeekdays
 import com.example.caltrack.ui.theme.CalTrackTheme
+import com.example.caltrack.ui.theme.calTrackSurfaceOutline
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -81,7 +83,14 @@ fun CalendarSheet(
         scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.calTrackSurfaceOutline(MaterialTheme.shapes.extraLarge),
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
         CalendarContent(
             month = month,
             selected = selected,
@@ -211,15 +220,16 @@ private fun DayCell(
     onClick: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val darkTheme = colors.background.luminance() < 0.5f
     val shape = if (isSelected) MaterialShapes.Cookie9Sided.toShape() else CircleShape
     val container = when {
         isSelected -> colors.primary
-        isLogged -> colors.tertiaryContainer
+        isLogged -> if (darkTheme) colors.tertiary.copy(alpha = 0.16f) else colors.tertiaryContainer
         else -> Color.Transparent
     }
     val content = when {
         isSelected -> colors.onPrimary
-        isLogged -> colors.onTertiaryContainer
+        isLogged -> if (darkTheme) colors.tertiary else colors.onTertiaryContainer
         enabled -> colors.onSurface
         else -> colors.onSurface.copy(alpha = 0.38f)
     }
