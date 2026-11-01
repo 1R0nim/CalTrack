@@ -17,6 +17,14 @@ private val Romanian: Locale = Locale.forLanguageTag("ro-RO")
 fun formatAmount(value: Double): String =
     DecimalFormat("0.#", DecimalFormatSymbols(Romanian)).format(value)
 
+/** Editable numeric values retain useful fractional precision without trailing zeroes. */
+fun formatAmountInput(value: Double): String =
+    DecimalFormat("0.########", DecimalFormatSymbols(Romanian)).format(value)
+
+/** Compact display formatting for calculated nutrition totals. */
+fun formatNutritionValue(value: Double): String =
+    DecimalFormat("0.##", DecimalFormatSymbols(Romanian)).format(value)
+
 fun formatRounded(value: Double): String = value.roundToInt().toString()
 
 /** Accepts both "12,5" and "12.5"; null when the text isn't a number. */

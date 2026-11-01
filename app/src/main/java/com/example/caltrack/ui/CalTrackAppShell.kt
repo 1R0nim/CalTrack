@@ -9,7 +9,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -44,10 +47,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.caltrack.R
 import com.example.caltrack.data.AppSettings
 import com.example.caltrack.data.ThemeMode
+import com.example.caltrack.ui.SettingsViewModel
+import com.example.caltrack.ui.AiConnectionState
 import com.example.caltrack.ui.menu.MenuScreen
 import com.example.caltrack.ui.meals.MealsRoute
 import com.example.caltrack.ui.meals.MealsViewModel
@@ -73,9 +79,11 @@ enum class AppSection(
 
 private val FabSize = 50.dp
 private val FabGap = 16.dp
+private val AiFabSize = 44.dp
+private val AiFabGap = 12.dp
 
-/** Extra bottom space on Azi so the last row also clears the + button above the bar. */
-private val FabClearance = FabSize + FabGap
+/** Extra bottom space on Azi so the last row also clears the AI and + buttons above the bar. */
+private val FabClearance = FabSize + FabGap + AiFabSize + AiFabGap
 
 /** How long a snackbar with an Undo action stays up. */
 private val SnackbarTimeout = 5.seconds
@@ -85,9 +93,15 @@ fun CalTrackAppShell(
     settings: AppSettings,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    aiConnectionState: AiConnectionState,
+    aiConnectionDetail: String?,
+    onSaveGeminiApiKey: (String) -> Unit,
+    onRemoveGeminiApiKey: () -> Unit,
+    onTestGeminiConnection: () -> Unit,
 ) {
     var section by rememberSaveable { mutableStateOf(AppSection.Today) }
     val todayViewModel: TodayViewModel = viewModel(factory = TodayViewModel.Factory)
+    val barcodeLookupState by todayViewModel.barcodeLookupState.collectAsStateWithLifecycle()
     val mealsViewModel: MealsViewModel = viewModel(factory = MealsViewModel.Factory)
     val statisticsViewModel: StatisticsViewModel = viewModel(factory = StatisticsViewModel.Factory)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -155,8 +169,10 @@ fun CalTrackAppShell(
                     when (section) {
                         AppSection.Today -> TodayRoute(
                             viewModel = todayViewModel,
+                            settings = settings,
                             contentPadding = screenPadding(extraBottom = FabClearance),
                             onShowSnackbar = showSnackbar,
+                            onOpenAiSettings = { section = AppSection.Menu },
                         )
                         AppSection.Stats -> StatisticsRoute(
                             viewModel = statisticsViewModel,
@@ -165,6 +181,9 @@ fun CalTrackAppShell(
                         AppSection.Meals -> MealsRoute(
                             viewModel = mealsViewModel,
                             selectedDate = todayViewModel::selectedDate,
+                            barcodeLookupState = barcodeLookupState,
+                            onBarcodeScanned = todayViewModel::lookupBarcode,
+                            onClearBarcodeLookup = todayViewModel::clearBarcodeLookup,
                             contentPadding = screenPadding(),
                             onShowSnackbar = showSnackbar,
                         )
@@ -172,6 +191,11 @@ fun CalTrackAppShell(
                             settings = settings,
                             onThemeModeChange = onThemeModeChange,
                             onDynamicColorChange = onDynamicColorChange,
+                            aiConnectionState = aiConnectionState,
+                            aiConnectionDetail = aiConnectionDetail,
+                            onSaveGeminiApiKey = onSaveGeminiApiKey,
+                            onRemoveGeminiApiKey = onRemoveGeminiApiKey,
+                            onTestGeminiConnection = onTestGeminiConnection,
                             contentPadding = screenPadding(),
                         )
                     }
@@ -187,17 +211,37 @@ fun CalTrackAppShell(
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(end = 20.dp, bottom = FloatingNavBarBottomGap + FloatingNavBarHeight + FabGap)
             ) {
-                FloatingActionButton(
-                    onClick = todayViewModel::startAdding,
-                    modifier = Modifier.size(FabSize),
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = if (darkTheme) TodayPalette.calorieCard else MaterialTheme.colorScheme.primary,
-                    contentColor = if (darkTheme) TodayPalette.calorieText else MaterialTheme.colorScheme.onPrimary,
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(AiFabGap),
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_add),
-                        contentDescription = stringResource(R.string.add_food),
-                    )
+                    // Opens the floating AI Food Assistant chat
+                    FloatingActionButton(
+                        onClick = todayViewModel::openAiAssistant,
+                        modifier = Modifier.size(AiFabSize),
+                        shape = RoundedCornerShape(14.dp),
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_ai_sparkle),
+                            contentDescription = stringResource(R.string.ai_assistant),
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    FloatingActionButton(
+                        onClick = todayViewModel::startAdding,
+                        modifier = Modifier.size(FabSize),
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = if (darkTheme) TodayPalette.calorieCard else MaterialTheme.colorScheme.primary,
+                        contentColor = if (darkTheme) TodayPalette.calorieText else MaterialTheme.colorScheme.onPrimary,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_add),
+                            contentDescription = stringResource(R.string.add_food),
+                        )
+                    }
                 }
             }
 

@@ -88,6 +88,7 @@ class TodayViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _editingEntry = MutableStateFlow<FoodEntry?>(null)
+    private val _aiAssistantOpen = MutableStateFlow(false)
     private val _barcodeLookupState = MutableStateFlow<BarcodeLookupUiState>(BarcodeLookupUiState.Idle)
     private var barcodeLookupJob: Job? = null
 
@@ -95,6 +96,17 @@ class TodayViewModel(
 
     /** Entry open in the editor sheet (id 0 = new entry); null while the sheet is closed. */
     val editingEntry: StateFlow<FoodEntry?> = _editingEntry.asStateFlow()
+
+    /** Whether the floating AI Food Assistant window is shown over Azi. */
+    val aiAssistantOpen: StateFlow<Boolean> = _aiAssistantOpen.asStateFlow()
+
+    fun openAiAssistant() {
+        _aiAssistantOpen.value = true
+    }
+
+    fun closeAiAssistant() {
+        _aiAssistantOpen.value = false
+    }
 
     fun showPreviousDay() {
         pinnedDate.value = selectedDate().minusDays(1)
@@ -169,6 +181,13 @@ class TodayViewModel(
     fun saveEntry(entry: FoodEntry, scannedProduct: BarcodeProduct? = null) {
         closeEditor()
         viewModelScope.launch { repository.saveEntry(entry, scannedProduct) }
+    }
+
+    /** AI results are already explicitly confirmed and contain locally calculated portion totals. */
+    fun saveAiEntries(entries: List<FoodEntry>) {
+        viewModelScope.launch {
+            entries.forEach { entry -> repository.saveEntry(entry.copy(date = selectedDate())) }
+        }
     }
 
     fun deleteEntry(entry: FoodEntry) {

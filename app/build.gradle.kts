@@ -46,6 +46,7 @@ room {
 }
 
 dependencies {
+    implementation(project(":shared"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
@@ -63,6 +64,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)
+    testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

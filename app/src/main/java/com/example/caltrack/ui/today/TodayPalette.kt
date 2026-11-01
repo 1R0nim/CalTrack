@@ -4,9 +4,9 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 
-/** Expressive colors for the Today destination, kept local so other destinations retain their theme. */
+/** Today accents; the base background is shared by every destination. */
 internal object TodayPalette {
-    val background = Color(0xFF07051D)
+    val background = Color(0xFF10141A)
     val calorieCard = Color(0xFFBBCBF0)
     val calorieText = Color(0xFF344365)
 
@@ -22,8 +22,8 @@ internal object TodayPalette {
     val fatAccent = Color(0xFFD8B4F8)
     val proteinAccent = Color(0xFFA7B5C7)
 
-    val navigationSurface = Color(0xE6262A39)
-    val navigationSelected = Color(0xFF465879)
+    val navigationSurface = Color(0xFF1D2938)
+    val navigationSelected = Color(0xFF35445F)
 }
 
 internal fun ColorScheme.isDarkCalTrackTheme(): Boolean = background.luminance() < 0.5f

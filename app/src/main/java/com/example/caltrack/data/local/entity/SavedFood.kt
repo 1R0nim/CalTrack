@@ -45,15 +45,20 @@ data class SavedFood(
     val imageUrl: String? = null,
 ) {
     fun toEntry(amount: Double = defaultAmount, date: LocalDate = LocalDate.now()): FoodEntry {
-        val factor = amount / 100.0
+        val totals = FoodNutritionPer100(
+            kcal = kcalPer100,
+            protein = proteinPer100,
+            carbs = carbsPer100,
+            fat = fatPer100,
+        ).forQuantity(amount)
         return FoodEntry(
             name = name,
             amount = amount,
             quantityUnit = quantityUnit,
-            kcal = kcalPer100 * factor,
-            protein = proteinPer100 * factor,
-            carbs = carbsPer100 * factor,
-            fat = fatPer100 * factor,
+            kcal = totals.kcal,
+            protein = totals.protein,
+            carbs = totals.carbs,
+            fat = totals.fat,
             date = date,
         )
     }

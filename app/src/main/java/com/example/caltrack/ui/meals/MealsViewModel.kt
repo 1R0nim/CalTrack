@@ -66,6 +66,10 @@ class MealsViewModel(private val repository: FoodRepository) : ViewModel() {
         viewModelScope.launch { repository.restoreSavedFood(food) }
     }
 
+    /** Saves a manually or barcode-created food into the existing library, without logging it. */
+    fun create(food: SavedFood): Deferred<Boolean> =
+        viewModelScope.async { repository.createSavedFood(food) }
+
     /** Completes with false when the new name is already taken by another saved food. */
     fun update(food: SavedFood): Deferred<Boolean> =
         viewModelScope.async { repository.updateSavedFood(food) }

@@ -26,10 +26,11 @@ fun AmountField(
     imeAction: ImeAction = ImeAction.Next,
     onDone: () -> Unit = {},
     textStyle: TextStyle? = null,
+    maxInputLength: Int = 7,
 ) {
     OutlinedTextField(
         value = value,
-        onValueChange = { if (it.isAmountInput()) onValueChange(it) },
+        onValueChange = { if (it.isAmountInput(maxInputLength)) onValueChange(it) },
         modifier = modifier,
         label = {
             if (textStyle == null) {
@@ -52,8 +53,10 @@ fun AmountField(
 }
 
 /** Digits with at most one decimal separator; keyboards differ on "," vs ".". */
-private fun String.isAmountInput(): Boolean =
-    length <= 7 && all { it in '0'..'9' || it == '.' || it == ',' } && count { it == '.' || it == ',' } <= 1
+private fun String.isAmountInput(maxInputLength: Int): Boolean =
+    length <= maxInputLength &&
+        all { it in '0'..'9' || it == '.' || it == ',' } &&
+        count { it == '.' || it == ',' } <= 1
 
 /** Blank counts as 0; null when the text isn't a number. */
 fun parseOptionalAmount(text: String): Double? = if (text.isBlank()) 0.0 else parseAmount(text)

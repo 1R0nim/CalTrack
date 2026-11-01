@@ -23,4 +23,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "CalTrack"
-include(":app")
+include(":app", ":shared")

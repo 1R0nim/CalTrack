@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +30,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -79,60 +77,19 @@ import com.example.caltrack.data.filterSavedFoodsForSearch
 import com.example.caltrack.data.local.entity.FoodEntry
 import com.example.caltrack.data.local.entity.SavedFood
 import com.example.caltrack.ui.components.AmountField
-import com.example.caltrack.ui.components.parseOptionalAmount
+import com.example.caltrack.ui.components.FoodEditorValues
+import com.example.caltrack.ui.components.FoodNutritionEditor
+import com.example.caltrack.ui.components.parsedAmount
+import com.example.caltrack.ui.components.parsedNutrition
 import com.example.caltrack.ui.formatAmount
+import com.example.caltrack.ui.formatAmountInput
 import com.example.caltrack.ui.formatRounded
 import com.example.caltrack.ui.parseAmount
-import com.example.caltrack.ui.theme.CardShape
 import com.example.caltrack.ui.theme.FieldShape
 import com.example.caltrack.ui.theme.calTrackSurfaceBorder
 import com.example.caltrack.ui.theme.calTrackSurfaceOutline
 import com.example.caltrack.ui.theme.ListItemShape
 import kotlinx.coroutines.launch
-
-private const val MaxSuggestions = 5
-
-/** Local steel-blue smoked surfaces for Add Food; light theme continues to use its selected palette. */
-private fun ColorScheme.withAddFoodSmokedSurfaces(): ColorScheme {
-    if (background.luminance() >= 0.5f) return this
-
-    val blue = Color(0xFFB8CEFA)
-    val primaryText = Color(0xFFF0F3FA)
-    val secondaryText = Color(0xFFA7B1C3)
-    return copy(
-        primary = blue,
-        onPrimary = Color(0xFF15243B),
-        primaryContainer = Color(0xFF263753),
-        onPrimaryContainer = primaryText,
-        secondary = Color(0xFF91A9CF),
-        onSecondary = Color(0xFF172438),
-        secondaryContainer = Color(0xFF1D2A3E),
-        onSecondaryContainer = primaryText,
-        tertiary = Color(0xFF9DBDDF),
-        onTertiary = Color(0xFF142434),
-        tertiaryContainer = Color(0xFF203347),
-        onTertiaryContainer = primaryText,
-        background = Color(0xFF101827),
-        onBackground = primaryText,
-        surface = Color(0xFF111A29),
-        onSurface = primaryText,
-        surfaceVariant = Color(0xFF1A2740),
-        onSurfaceVariant = secondaryText,
-        outline = Color(0xFF9AB1D8).copy(alpha = 0.30f),
-        outlineVariant = Color(0xFFB8CEFA).copy(alpha = 0.14f),
-        inverseSurface = Color(0xFFE2EAF7),
-        inverseOnSurface = Color(0xFF1B2638),
-        inversePrimary = Color(0xFF526B96),
-        surfaceTint = blue,
-        surfaceDim = Color(0xFF0C121D),
-        surfaceBright = Color(0xFF2D3D59),
-        surfaceContainerLowest = Color(0xFF0C121D),
-        surfaceContainerLow = Color(0xFF17243B),
-        surfaceContainer = Color(0xFF1D2B44),
-        surfaceContainerHigh = Color(0xFF243550),
-        surfaceContainerHighest = Color(0xFF304562),
-    )
-}
 
 /**
  * Add/edit form for one entry. A new entry can be filled from frequent or searched saved foods,
@@ -142,6 +99,8 @@ private fun ColorScheme.withAddFoodSmokedSurfaces(): ColorScheme {
 @Composable
 fun EntryEditorSheet(
     entry: FoodEntry,
+    isAiPrefilled: Boolean,
+    initiallyMissingNutrients: Set<String>,
     frequentFoods: List<FrequentFood>,
     savedFoods: List<SavedFood>,
     barcodeLookupState: BarcodeLookupUiState,
@@ -151,83 +110,66 @@ fun EntryEditorSheet(
     onDismiss: () -> Unit,
 ) {
     val isNew = entry.id == 0L
-    val baseColorScheme = MaterialTheme.colorScheme
-    val addFoodColorScheme = remember(baseColorScheme) {
-        baseColorScheme.withAddFoodSmokedSurfaces()
-    }
+    val addFoodColorScheme = MaterialTheme.colorScheme
     val addFoodMotionScheme = MaterialTheme.motionScheme
     val addFoodTypography = MaterialTheme.typography
 
-    fun prefill(value: Double) = if (isNew) "" else formatAmount(value)
+    fun prefillPer100(value: Double, nutrient: String): String {
+        if (isNew && !isAiPrefilled || nutrient in initiallyMissingNutrients) return ""
+        val per100 = if (entry.amount > 0.0) value * 100.0 / entry.amount else value
+        return formatAmountInput(per100)
+    }
 
-    var name by rememberSaveable { mutableStateOf(entry.name) }
-    var amount by rememberSaveable { mutableStateOf(prefill(entry.amount)) }
-    var quantityUnit by remember { mutableStateOf(entry.quantityUnit) }
-    var kcal by rememberSaveable { mutableStateOf(prefill(entry.kcal)) }
-    var protein by rememberSaveable { mutableStateOf(prefill(entry.protein)) }
-    var carbs by rememberSaveable { mutableStateOf(prefill(entry.carbs)) }
-    var fat by rememberSaveable { mutableStateOf(prefill(entry.fat)) }
+    var name by rememberSaveable(entry.id, isAiPrefilled) { mutableStateOf(entry.name) }
+    var amount by rememberSaveable(entry.id, isAiPrefilled) {
+        mutableStateOf(if (isNew && !isAiPrefilled) "" else formatAmountInput(entry.amount))
+    }
+    var quantityUnit by rememberSaveable(entry.id, isAiPrefilled) { mutableStateOf(entry.quantityUnit) }
+    var kcal by rememberSaveable(entry.id, isAiPrefilled, initiallyMissingNutrients) { mutableStateOf(prefillPer100(entry.kcal, "kcal")) }
+    var protein by rememberSaveable(entry.id, isAiPrefilled, initiallyMissingNutrients) { mutableStateOf(prefillPer100(entry.protein, "protein")) }
+    var carbs by rememberSaveable(entry.id, isAiPrefilled, initiallyMissingNutrients) { mutableStateOf(prefillPer100(entry.carbs, "carbohydrates")) }
+    var fat by rememberSaveable(entry.id, isAiPrefilled, initiallyMissingNutrients) { mutableStateOf(prefillPer100(entry.fat, "fat")) }
     var pickedFood by remember { mutableStateOf<SavedFood?>(null) }
-    var selectedBarcodeProduct by remember { mutableStateOf<BarcodeProduct?>(null) }
     var scannedProductForSave by remember { mutableStateOf<BarcodeProduct?>(null) }
     var scannerUnavailable by rememberSaveable { mutableStateOf(false) }
 
-    fun fillFrom(food: SavedFood, portion: Double) {
-        val factor = portion / 100.0
-        kcal = formatAmount(food.kcalPer100 * factor)
-        protein = formatAmount(food.proteinPer100 * factor)
-        carbs = formatAmount(food.carbsPer100 * factor)
-        fat = formatAmount(food.fatPer100 * factor)
-    }
-
-    fun fillFrom(product: BarcodeProduct, portion: Double) {
-        val factor = portion / 100.0
-        kcal = product.nutrition.kcalPer100?.let { formatAmount(it * factor) }.orEmpty()
-        protein = product.nutrition.proteinPer100?.let { formatAmount(it * factor) }.orEmpty()
-        carbs = product.nutrition.carbsPer100?.let { formatAmount(it * factor) }.orEmpty()
-        fat = product.nutrition.fatPer100?.let { formatAmount(it * factor) }.orEmpty()
-    }
-
-    fun recalculate(amountText: String) {
-        val portion = parseAmount(amountText)?.takeIf { it > 0 } ?: return
-        pickedFood?.let { fillFrom(it, portion) }
-        selectedBarcodeProduct?.let { fillFrom(it, portion) }
-    }
-
     fun pick(food: SavedFood) {
         pickedFood = food
-        selectedBarcodeProduct = null
         scannedProductForSave = null
         quantityUnit = food.quantityUnit
         name = food.name
-        val portion = parseAmount(amount)?.takeIf { it > 0 }
-            ?: food.defaultAmount.also { amount = formatAmount(it) }
-        fillFrom(food, portion)
+        if (parseAmount(amount)?.takeIf { it > 0.0 } == null) {
+            amount = formatAmountInput(food.defaultAmount)
+        }
+        kcal = formatAmountInput(food.kcalPer100)
+        protein = formatAmountInput(food.proteinPer100)
+        carbs = formatAmountInput(food.carbsPer100)
+        fat = formatAmountInput(food.fatPer100)
     }
 
     fun applyProduct(product: BarcodeProduct, unit: FoodQuantityUnit) {
         pickedFood = null
-        selectedBarcodeProduct = product
         scannedProductForSave = product
         quantityUnit = unit
         name = product.editorName
-        val portion = product.defaultAmount(unit)
-        amount = formatAmount(portion)
-        fillFrom(product, portion)
+        amount = formatAmountInput(product.defaultAmount(unit))
+        kcal = product.nutrition.kcalPer100?.let(::formatAmountInput).orEmpty()
+        protein = product.nutrition.proteinPer100?.let(::formatAmountInput).orEmpty()
+        carbs = product.nutrition.carbsPer100?.let(::formatAmountInput).orEmpty()
+        fat = product.nutrition.fatPer100?.let(::formatAmountInput).orEmpty()
     }
 
-    val missingImportedNutrients = scannedProductForSave?.nutrition?.missingNutrients.orEmpty()
-    val edited = editedEntry(
-        entry = entry,
+    val editorValues = FoodEditorValues(
         name = name,
         amount = amount,
         quantityUnit = quantityUnit,
-        kcal = kcal,
-        protein = protein,
-        carbs = carbs,
-        fat = fat,
-        requiredNutrients = missingImportedNutrients,
+        kcalPer100 = kcal,
+        proteinPer100 = protein,
+        carbsPer100 = carbs,
+        fatPer100 = fat,
     )
+    val missingImportedNutrients = scannedProductForSave?.nutrition?.missingNutrients.orEmpty() + initiallyMissingNutrients
+    val edited = editedEntry(entry, editorValues, missingImportedNutrients.toSet())
 
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
@@ -250,9 +192,6 @@ fun EntryEditorSheet(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val nameFocus = remember { FocusRequester() }
     val editorScrollState = rememberScrollState()
-    val amountUnit = stringResource(
-        if (quantityUnit == FoodQuantityUnit.GRAMS) R.string.grams_unit else R.string.milliliters_unit,
-    )
 
     fun closeSearch() {
         searchQuery = ""
@@ -274,17 +213,13 @@ fun EntryEditorSheet(
         ModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = sheetState,
-            modifier = Modifier.calTrackSurfaceOutline(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)),
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,
             sheetMaxWidth = 560.dp,
         ) {
-        if (isNew) {
-            LaunchedEffect(Unit) { nameFocus.requestFocus() }
-        }
-
+        // Like Mese, the keyboard only opens once a field is tapped
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -356,155 +291,31 @@ fun EntryEditorSheet(
                 )
             }
 
-            Column(
+            FoodNutritionEditor(
+                values = editorValues,
+                onValuesChange = { updated ->
+                    if (updated.name != name) pickedFood = null
+                    name = updated.name
+                    amount = updated.amount
+                    quantityUnit = updated.quantityUnit
+                    kcal = updated.kcalPer100
+                    protein = updated.proteinPer100
+                    carbs = updated.carbsPer100
+                    fat = updated.fatPer100
+                },
+                saveEnabled = edited != null,
+                onSave = save,
+                onCancel = { close(onDismiss) },
                 modifier = Modifier.padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                NameField(
-                    value = name,
-                    onValueChange = {
-                        name = it
-                        pickedFood = null
-                    },
-                    suggestions = if (isNew) savedFoods else emptyList(),
-                    picked = pickedFood,
-                    onPick = ::pick,
-                    modifier = Modifier.focusRequester(nameFocus),
-                )
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = CardShape,
-                    color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
-                        MaterialTheme.colorScheme.surfaceContainerLow
-                    } else {
-                        Color.Transparent
-                    },
-                    border = calTrackSurfaceBorder(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            AmountField(
-                                value = amount,
-                                onValueChange = {
-                                    amount = it
-                                    recalculate(it)
-                                },
-                                label = stringResource(R.string.quantity),
-                                unit = amountUnit,
-                                modifier = Modifier.weight(1f),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                            )
-                            AmountField(
-                                value = kcal,
-                                onValueChange = {
-                                    kcal = it
-                                    pickedFood = null
-                                    selectedBarcodeProduct = null
-                                },
-                                label = stringResource(R.string.calories),
-                                unit = stringResource(R.string.kcal),
-                                modifier = Modifier.weight(1f),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            AmountField(
-                                value = protein,
-                                onValueChange = {
-                                    protein = it
-                                    pickedFood = null
-                                    selectedBarcodeProduct = null
-                                },
-                                label = stringResource(R.string.protein),
-                                unit = stringResource(R.string.grams_unit),
-                                modifier = Modifier.weight(1f),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                optional = true,
-                            )
-                            AmountField(
-                                value = carbs,
-                                onValueChange = {
-                                    carbs = it
-                                    pickedFood = null
-                                    selectedBarcodeProduct = null
-                                },
-                                label = stringResource(R.string.carbs),
-                                unit = stringResource(R.string.grams_unit),
-                                modifier = Modifier.weight(1f),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                optional = true,
-                            )
-                            AmountField(
-                                value = fat,
-                                onValueChange = {
-                                    fat = it
-                                    pickedFood = null
-                                    selectedBarcodeProduct = null
-                                },
-                                label = stringResource(R.string.fat),
-                                unit = stringResource(R.string.grams_unit),
-                                modifier = Modifier.weight(1f),
-                                textStyle = MaterialTheme.typography.bodyMedium,
-                                optional = true,
-                                imeAction = ImeAction.Done,
-                                onDone = save,
-                            )
-                        }
-                        if (missingImportedNutrients.isNotEmpty() && edited == null) {
-                            Text(
-                                text = stringResource(R.string.barcode_missing_editor_fields),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(
-                onClick = { close(onDismiss) },
-                shapes = ButtonDefaults.shapes(),
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-            ) {
-                Text(stringResource(R.string.cancel), style = MaterialTheme.typography.bodyMedium)
-            }
-            Button(
-                onClick = save,
-                enabled = edited != null,
-                shapes = ButtonDefaults.shapes(),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 52.dp),
-                colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-            ) {
-                Text(stringResource(R.string.save), style = MaterialTheme.typography.titleSmall)
-            }
+                requiredNutrients = missingImportedNutrients.toSet(),
+                suggestions = if (isNew) savedFoods else emptyList(),
+                pickedSuggestion = pickedFood,
+                onPickSuggestion = ::pick,
+                nameModifier = Modifier.focusRequester(nameFocus),
+            )
         }
     }
-    }
+}
 }
 
 @Composable
@@ -895,97 +706,21 @@ private fun FoodSearchResult(food: SavedFood, onClick: () -> Unit) {
     }
 }
 
-/** Name field that suggests saved foods matching what's typed (ignoring case and diacritics). */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun NameField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    suggestions: List<SavedFood>,
-    picked: SavedFood?,
-    onPick: (SavedFood) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var focused by remember { mutableStateOf(false) }
-    var dismissed by remember { mutableStateOf(false) }
-    val matches = remember(value, suggestions) {
-        val key = SavedFood.searchKeyOf(value)
-        if (key.isEmpty()) {
-            emptyList()
-        } else {
-            suggestions.asSequence()
-                .filter { SavedFood.searchKeyOf(it.name).contains(key) }
-                .take(MaxSuggestions)
-                .toList()
-        }
-    }
-    val expanded = focused && !dismissed && picked == null && matches.isNotEmpty()
-
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (!it) dismissed = true }) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {
-                dismissed = false
-                onValueChange(it)
-            },
-            modifier = modifier
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
-                .fillMaxWidth()
-                .onFocusChanged { focused = it.isFocused },
-            label = { Text(stringResource(R.string.name), style = MaterialTheme.typography.bodyMedium) },
-            textStyle = MaterialTheme.typography.bodyMedium,
-            singleLine = true,
-            shape = FieldShape,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.Next,
-            ),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { dismissed = true }) {
-            matches.forEach { food ->
-                DropdownMenuItem(
-                    text = { Text(food.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    trailingIcon = {
-                        Text(
-                            text = stringResource(R.string.per_100_quantity, food.quantityUnit.code) +
-                                " · " + stringResource(R.string.amount_kcal, formatAmount(food.kcalPer100)),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    onClick = { onPick(food) },
-                )
-            }
-        }
-    }
-}
-
-/** [entry] with the form values applied, or null while a required field is missing or invalid. */
+/** [entry] with base values scaled to the entered journal quantity. */
 private fun editedEntry(
     entry: FoodEntry,
-    name: String,
-    amount: String,
-    quantityUnit: FoodQuantityUnit,
-    kcal: String,
-    protein: String,
-    carbs: String,
-    fat: String,
-    requiredNutrients: List<String> = emptyList(),
+    values: FoodEditorValues,
+    requiredNutrients: Set<String>,
 ): FoodEntry? {
-    val parsedKcal = parseAmount(kcal) ?: return null
-    val parsedProtein = if ("protein" in requiredNutrients) parseAmount(protein) ?: return null
-        else parseOptionalAmount(protein) ?: return null
-    val parsedCarbs = if ("carbohydrates" in requiredNutrients) parseAmount(carbs) ?: return null
-        else parseOptionalAmount(carbs) ?: return null
-    val parsedFat = if ("fat" in requiredNutrients) parseAmount(fat) ?: return null
-        else parseOptionalAmount(fat) ?: return null
+    val amount = values.parsedAmount() ?: return null
+    val totals = values.parsedNutrition(requiredNutrients)?.forQuantity(amount) ?: return null
     return entry.copy(
-        name = name.trim().ifEmpty { return null },
-        amount = parseAmount(amount)?.takeIf { it > 0 } ?: return null,
-        quantityUnit = quantityUnit,
-        kcal = parsedKcal,
-        protein = parsedProtein,
-        carbs = parsedCarbs,
-        fat = parsedFat,
+        name = values.name.trim().ifEmpty { return null },
+        amount = amount,
+        quantityUnit = values.quantityUnit,
+        kcal = totals.kcal,
+        protein = totals.protein,
+        carbs = totals.carbs,
+        fat = totals.fat,
     )
 }

@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,7 +40,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.caltrack.R
+import com.example.caltrack.data.AppSettings
 import com.example.caltrack.data.local.entity.FoodEntry
+import com.example.caltrack.ui.ai.AiFoodAssistantWindow
+import com.example.caltrack.ui.ai.AiFoodAssistantViewModel
 import com.example.caltrack.ui.theme.CalTrackTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -49,12 +53,25 @@ import kotlin.math.sign
 @Composable
 fun TodayRoute(
     viewModel: TodayViewModel,
+    settings: AppSettings,
     contentPadding: PaddingValues,
     onShowSnackbar: suspend (message: String, actionLabel: String?) -> Boolean,
+    onOpenAiSettings: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val editingEntry by viewModel.editingEntry.collectAsStateWithLifecycle()
+    val aiViewModel: AiFoodAssistantViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = AiFoodAssistantViewModel.Factory)
+    val aiState by aiViewModel.state.collectAsStateWithLifecycle()
+    val showAiAssistant by viewModel.aiAssistantOpen.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val resources = LocalResources.current
     var showCalendar by rememberSaveable { mutableStateOf(false) }
+    var aiPrefilledEdit by rememberSaveable { mutableStateOf(false) }
+    var aiMissingNutrients by rememberSaveable { mutableStateOf(emptySet<String>()) }
+
+    LaunchedEffect(showAiAssistant) {
+        if (showAiAssistant) aiViewModel.refreshKeyAvailability()
+    }
 
     TodayScreen(
         state = state,
@@ -87,15 +104,58 @@ fun TodayRoute(
         val barcodeLookupState by viewModel.barcodeLookupState.collectAsStateWithLifecycle()
         EntryEditorSheet(
             entry = entry,
+            isAiPrefilled = aiPrefilledEdit,
+            initiallyMissingNutrients = aiMissingNutrients,
             frequentFoods = frequentFoods,
             savedFoods = savedFoods,
             barcodeLookupState = barcodeLookupState,
             onBarcodeScanned = viewModel::lookupBarcode,
             onClearBarcodeLookup = viewModel::clearBarcodeLookup,
             onSave = { foodEntry, scannedProduct ->
+                aiPrefilledEdit = false
+                aiMissingNutrients = emptySet()
                 viewModel.saveEntry(foodEntry, scannedProduct)
             },
-            onDismiss = viewModel::closeEditor,
+            onDismiss = {
+                aiPrefilledEdit = false
+                aiMissingNutrients = emptySet()
+                viewModel.closeEditor()
+            },
+        )
+    }
+
+    if (showAiAssistant) {
+        AiFoodAssistantWindow(
+            state = aiState,
+            consentGranted = settings.aiConsentGranted,
+            selectedDate = state.date,
+            onSend = aiViewModel::send,
+            onAcceptConsent = aiViewModel::acceptConsentAndSend,
+            onRetry = aiViewModel::retry,
+            onClearConversation = aiViewModel::clearConversation,
+            onRemoveFood = aiViewModel::removeFood,
+            onAddEntries = { messageId, indices, entries ->
+                viewModel.closeAiAssistant()
+                aiViewModel.markAdded(messageId, indices)
+                viewModel.saveAiEntries(entries)
+                scope.launch {
+                    onShowSnackbar(
+                        resources.getQuantityString(R.plurals.ai_entries_added, entries.size, entries.size),
+                        null,
+                    )
+                }
+            },
+            onEditEntry = { entry, missingNutrients ->
+                viewModel.closeAiAssistant()
+                aiPrefilledEdit = true
+                aiMissingNutrients = missingNutrients
+                viewModel.startEditing(entry)
+            },
+            onOpenSettings = {
+                viewModel.closeAiAssistant()
+                onOpenAiSettings()
+            },
+            onDismiss = viewModel::closeAiAssistant,
         )
     }
 }
@@ -190,25 +250,29 @@ fun TodayScreen(
                     }
                 },
         ) {
-            DayContent(
-                state = state,
-                listState = listState,
-                contentPadding = PaddingValues(
-                    start = start + 16.dp,
-                    top = 22.dp,
-                    end = end + 16.dp,
-                    bottom = contentPadding.calculateBottomPadding(),
-                ),
-                onEntryClick = onEntryClick,
-                onDeleteEntry = ::deleteWithUndo,
-                restoredId = restoredId,
-                onRestoredShown = { restoredId = null },
-                modifier = Modifier.graphicsLayer {
-                    val offset = dayOffset.value
-                    translationX = offset * size.width * 0.3f
-                    alpha = (1f - abs(offset)).coerceIn(0f, 1f)
-                },
-            )
+            // A fresh list per day: rows of the previous day must not linger in fade-out animations
+            // on top of the new day's cards
+            key(state.date) {
+                DayContent(
+                    state = state,
+                    listState = listState,
+                    contentPadding = PaddingValues(
+                        start = start + 16.dp,
+                        top = 22.dp,
+                        end = end + 16.dp,
+                        bottom = contentPadding.calculateBottomPadding(),
+                    ),
+                    onEntryClick = onEntryClick,
+                    onDeleteEntry = ::deleteWithUndo,
+                    restoredId = restoredId,
+                    onRestoredShown = { restoredId = null },
+                    modifier = Modifier.graphicsLayer {
+                        val offset = dayOffset.value
+                        translationX = offset * size.width * 0.3f
+                        alpha = (1f - abs(offset)).coerceIn(0f, 1f)
+                    },
+                )
+            }
         }
     }
 }

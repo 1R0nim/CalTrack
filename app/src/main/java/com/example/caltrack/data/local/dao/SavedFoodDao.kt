@@ -54,6 +54,14 @@ abstract class SavedFoodDao {
             false
         }
 
+    /** Adds a library food without counting a journal use; barcode and name duplicates are rejected. */
+    @Transaction
+    open suspend fun insertNew(food: SavedFood): Boolean {
+        val normalized = food.normalized().copy(id = 0, useCount = 0)
+        if (normalized.barcode?.let { findByBarcode(it) } != null) return false
+        return insertRowOrIgnore(normalized) != -1L
+    }
+
     /** Undo for [delete]: puts the food back with its id, unless its name was taken meanwhile. */
     suspend fun restore(food: SavedFood) {
         insertRowOrIgnore(food.normalized())

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +20,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -49,11 +51,17 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.caltrack.R
+import com.example.caltrack.data.FoodDataSource
+import com.example.caltrack.data.local.entity.FoodQuantityUnit
 import com.example.caltrack.data.local.entity.SavedFood
 import com.example.caltrack.ui.components.AmountField
 import com.example.caltrack.ui.components.FoodAvatar
-import com.example.caltrack.ui.components.parseOptionalAmount
+import com.example.caltrack.ui.components.FoodEditorValues
+import com.example.caltrack.ui.components.FoodNutritionEditor
+import com.example.caltrack.ui.components.parsedAmount
+import com.example.caltrack.ui.components.parsedNutrition
 import com.example.caltrack.ui.formatAmount
+import com.example.caltrack.ui.formatAmountInput
 import com.example.caltrack.ui.formatRounded
 import com.example.caltrack.ui.parseAmount
 import com.example.caltrack.ui.theme.FieldShape
@@ -94,7 +102,6 @@ fun MealSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.calTrackSurfaceOutline(MaterialTheme.shapes.extraLarge),
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -143,6 +150,57 @@ fun MealSheet(
                 }
             },
         )
+    }
+}
+
+/** Creation sheet for a library food; saving it never adds a journal entry. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddSavedFoodSheet(
+    food: SavedFood,
+    requiredNutrients: Set<String>,
+    onSave: (SavedFood) -> Deferred<Boolean>,
+    onSaved: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    val scope = rememberCoroutineScope()
+    var closing by remember { mutableStateOf(false) }
+
+    fun close(saved: Boolean) {
+        if (closing) return
+        closing = true
+        scope.launch { sheetState.hide() }.invokeOnCompletion {
+            if (saved) onSaved()
+            onDismiss()
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { close(saved = false) },
+        sheetState = sheetState,
+        shape = MaterialTheme.shapes.extraLarge,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+        ) {
+            EditMealContent(
+                food = food,
+                onUpdate = onSave,
+                onDone = { close(saved = true) },
+                onCancel = { close(saved = false) },
+                requiredNutrients = requiredNutrients,
+            )
+        }
     }
 }
 
@@ -265,24 +323,48 @@ private fun QuickAmountsGroup(selected: Double?, unit: String, onSelect: (Int) -
     }
 }
 
-/** Name and per-100-unit values; the amount stays whatever was last logged. */
+/** The same reference-value editor is used for new and existing library foods. */
 @Composable
 private fun EditMealContent(
     food: SavedFood,
     onUpdate: (SavedFood) -> Deferred<Boolean>,
     onDone: () -> Unit,
+    onCancel: () -> Unit = onDone,
+    requiredNutrients: Set<String> = emptySet(),
 ) {
+    val isNew = food.id == 0L
+    val isManualCreation = isNew && food.dataSource == FoodDataSource.MANUAL
     val scope = rememberCoroutineScope()
-    var name by rememberSaveable { mutableStateOf(food.name) }
-    var kcal by rememberSaveable { mutableStateOf(formatAmount(food.kcalPer100)) }
-    var protein by rememberSaveable { mutableStateOf(formatAmount(food.proteinPer100)) }
-    var carbs by rememberSaveable { mutableStateOf(formatAmount(food.carbsPer100)) }
-    var fat by rememberSaveable { mutableStateOf(formatAmount(food.fatPer100)) }
+    var name by rememberSaveable(food.id) {
+        mutableStateOf(if (isManualCreation) "" else food.name)
+    }
+    var amount by rememberSaveable(food.id) { mutableStateOf(formatAmountInput(food.defaultAmount)) }
+    var kcal by rememberSaveable(food.id) {
+        mutableStateOf(if (isManualCreation || "kcal" in requiredNutrients) "" else formatAmountInput(food.kcalPer100))
+    }
+    var protein by rememberSaveable(food.id) {
+        mutableStateOf(if (isManualCreation || "protein" in requiredNutrients) "" else formatAmountInput(food.proteinPer100))
+    }
+    var carbs by rememberSaveable(food.id) {
+        mutableStateOf(if (isManualCreation || "carbohydrates" in requiredNutrients) "" else formatAmountInput(food.carbsPer100))
+    }
+    var fat by rememberSaveable(food.id) {
+        mutableStateOf(if (isManualCreation || "fat" in requiredNutrients) "" else formatAmountInput(food.fatPer100))
+    }
+    var quantityUnit by rememberSaveable(food.id) { mutableStateOf(food.quantityUnit) }
     var nameTaken by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
-    val gramsUnit = stringResource(R.string.grams_unit)
 
-    val updated = editedFood(food, name, kcal, protein, carbs, fat)
+    val editorValues = FoodEditorValues(
+        name = name,
+        amount = amount,
+        quantityUnit = quantityUnit,
+        kcalPer100 = kcal,
+        proteinPer100 = protein,
+        carbsPer100 = carbs,
+        fatPer100 = fat,
+    )
+    val updated = editedFood(food, editorValues, requiredNutrients)
     val save = {
         if (updated != null && !saving) {
             saving = true
@@ -293,101 +375,47 @@ private fun EditMealContent(
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = stringResource(R.string.edit_meal),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
-        OutlinedTextField(
-            value = name,
-            onValueChange = {
-                name = it
-                nameTaken = false
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.name)) },
-            isError = nameTaken,
-            supportingText = if (nameTaken) ({ Text(stringResource(R.string.name_taken)) }) else null,
-            singleLine = true,
-            shape = FieldShape,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.Next,
-            ),
-        )
-        Text(
-            text = stringResource(R.string.per_100_quantity, food.quantityUnit.code),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-        )
-        AmountField(
-            value = kcal,
-            onValueChange = { kcal = it },
-            label = stringResource(R.string.calories),
-            unit = stringResource(R.string.kcal),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AmountField(
-                value = protein,
-                onValueChange = { protein = it },
-                label = stringResource(R.string.protein),
-                unit = gramsUnit,
-                modifier = Modifier.weight(1f),
-                optional = true,
-            )
-            AmountField(
-                value = carbs,
-                onValueChange = { carbs = it },
-                label = stringResource(R.string.carbs),
-                unit = gramsUnit,
-                modifier = Modifier.weight(1f),
-                optional = true,
-            )
-            AmountField(
-                value = fat,
-                onValueChange = { fat = it },
-                label = stringResource(R.string.fat),
-                unit = gramsUnit,
-                modifier = Modifier.weight(1f),
-                optional = true,
-                imeAction = ImeAction.Done,
-                onDone = save,
-            )
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-        ) {
-            TextButton(onClick = onDone, shapes = ButtonDefaults.shapes()) {
-                Text(stringResource(R.string.cancel))
-            }
-            Button(onClick = save, shapes = ButtonDefaults.shapes(), enabled = updated != null && !saving) {
-                Text(stringResource(R.string.save))
-            }
-        }
-    }
+    FoodNutritionEditor(
+        values = editorValues,
+        onValuesChange = { next ->
+            if (next.name != name) nameTaken = false
+            name = next.name
+            amount = next.amount
+            quantityUnit = next.quantityUnit
+            kcal = next.kcalPer100
+            protein = next.proteinPer100
+            carbs = next.carbsPer100
+            fat = next.fatPer100
+        },
+        saveEnabled = updated != null,
+        saving = saving,
+        onSave = save,
+        onCancel = onCancel,
+        title = stringResource(if (isNew) R.string.add_food else R.string.edit_food),
+        requiredNutrients = requiredNutrients,
+        nameErrorMessage = if (nameTaken) {
+            stringResource(if (isNew) R.string.food_already_saved else R.string.name_taken)
+        } else {
+            null
+        },
+    )
 }
 
-/** [food] with the form values applied, or null while a required field is missing or invalid. */
+/** [food] with reference values and the selected default quantity applied. */
 private fun editedFood(
     food: SavedFood,
-    name: String,
-    kcal: String,
-    protein: String,
-    carbs: String,
-    fat: String,
+    values: FoodEditorValues,
+    requiredNutrients: Set<String>,
 ): SavedFood? {
+    val amount = values.parsedAmount() ?: return null
+    val nutrition = values.parsedNutrition(requiredNutrients) ?: return null
     return food.copy(
-        name = name.trim().ifEmpty { return null },
-        kcalPer100 = parseAmount(kcal) ?: return null,
-        proteinPer100 = parseOptionalAmount(protein) ?: return null,
-        carbsPer100 = parseOptionalAmount(carbs) ?: return null,
-        fatPer100 = parseOptionalAmount(fat) ?: return null,
+        name = values.name.trim().ifEmpty { return null },
+        kcalPer100 = nutrition.kcal,
+        proteinPer100 = nutrition.protein,
+        carbsPer100 = nutrition.carbs,
+        fatPer100 = nutrition.fat,
+        defaultAmount = amount,
+        quantityUnit = values.quantityUnit,
     )
 }

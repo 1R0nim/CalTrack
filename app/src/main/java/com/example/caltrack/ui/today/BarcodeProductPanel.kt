@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -133,11 +134,24 @@ internal fun BarcodeLookupPanel(
         }
         when (state) {
             BarcodeLookupUiState.Idle -> Unit
-            BarcodeLookupUiState.Loading -> Text(
-                text = stringResource(R.string.barcode_lookup_loading),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            BarcodeLookupUiState.Loading -> Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = MaterialTheme.shapes.large,
+                border = calTrackSurfaceBorder(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                    Text(
+                        text = stringResource(R.string.barcode_lookup_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             is BarcodeLookupUiState.Found -> ProductPreview(
                 product = state.product,
                 onUseProduct = onUseProduct,

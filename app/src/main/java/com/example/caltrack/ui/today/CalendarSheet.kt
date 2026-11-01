@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -52,11 +53,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.caltrack.R
 import com.example.caltrack.ui.formatMonthYear
 import com.example.caltrack.ui.narrowWeekdays
 import com.example.caltrack.ui.theme.CalTrackTheme
-import com.example.caltrack.ui.theme.calTrackSurfaceOutline
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -86,7 +87,6 @@ fun CalendarSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.calTrackSurfaceOutline(MaterialTheme.shapes.extraLarge),
         shape = MaterialTheme.shapes.extraLarge,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -120,6 +120,12 @@ private fun CalendarContent(
                 text = formatMonthYear(month),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                // Long month names shrink instead of wrapping when the Azi button is shown
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 16.sp,
+                    maxFontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                ),
                 modifier = Modifier
                     .weight(1f)
                     .padding(start = 4.dp),

@@ -91,7 +91,7 @@ private fun DatePill(label: String, onClick: () -> Unit) {
         contentPadding = PaddingValues(horizontal = 24.dp),
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .widthIn(min = 128.dp)
+            .widthIn(min = 160.dp)
             .semantics { onClick(label = pickDay) { onClick(); true } },
     ) {
         AnimatedContent(

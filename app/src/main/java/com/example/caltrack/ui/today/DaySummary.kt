@@ -35,6 +35,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.material3.toShape
 import androidx.compose.ui.res.stringResource
@@ -55,12 +56,12 @@ import kotlin.math.roundToInt
 fun CaloriesCard(kcal: Double, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val darkTheme = colors.isDarkCalTrackTheme()
-    val cardColor = if (darkTheme) TodayPalette.calorieCard else colors.surfaceContainerLow
-    val calorieTextColor = if (darkTheme) TodayPalette.calorieText else colors.onSurface
+    val cardColor = if (darkTheme) TodayPalette.calorieCard else colors.primaryContainer
+    val calorieTextColor = if (darkTheme) TodayPalette.calorieText else colors.onPrimaryContainer
     val supportingTextColor = if (darkTheme) {
         TodayPalette.calorieText.copy(alpha = 0.76f)
     } else {
-        colors.onSurfaceVariant
+        colors.onPrimaryContainer.copy(alpha = 0.78f)
     }
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -71,17 +72,15 @@ fun CaloriesCard(kcal: Double, modifier: Modifier = Modifier) {
         ),
     ) {
         Box(Modifier.fillMaxWidth()) {
-            if (darkTheme) {
-                TodayCardArtwork(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 40.dp, y = (-36).dp),
-                    size = 170.dp,
-                    alpha = 0.10f,
-                    shapeIndex = 0,
-                    rotation = 18f,
-                )
-            }
+            TodayCardArtwork(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 40.dp, y = (-36).dp),
+                size = 170.dp,
+                alpha = if (darkTheme) 0.10f else 0.07f,
+                shapeIndex = 0,
+                rotation = 18f,
+            )
             Column(
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 25.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -135,21 +134,21 @@ fun MacroCardsRow(
             MacroMetric(
                 label = R.string.carbs,
                 grams = carbs,
-                cardColor = if (darkTheme) TodayPalette.carbsCard else colors.surfaceContainerLow,
-                contentColor = if (darkTheme) TodayPalette.primaryText else colors.onSurface,
-                secondaryColor = if (darkTheme) TodayPalette.secondaryText else colors.onSurfaceVariant,
+                cardColor = if (darkTheme) TodayPalette.carbsCard else colors.primaryContainer,
+                contentColor = if (darkTheme) TodayPalette.primaryText else colors.onPrimaryContainer,
+                secondaryColor = if (darkTheme) TodayPalette.secondaryText else colors.onPrimaryContainer.copy(alpha = 0.78f),
                 compact = compact,
                 modifier = Modifier.weight(1f),
             )
             MacroMetric(
                 label = R.string.fat,
                 grams = fat,
-                cardColor = if (darkTheme) TodayPalette.fatCard else colors.surfaceContainerLow,
-                contentColor = if (darkTheme) TodayPalette.calorieText else colors.onSurface,
+                cardColor = if (darkTheme) TodayPalette.fatCard else colors.secondaryContainer,
+                contentColor = if (darkTheme) TodayPalette.calorieText else colors.onSecondaryContainer,
                 secondaryColor = if (darkTheme) {
                     TodayPalette.calorieText.copy(alpha = 0.78f)
                 } else {
-                    colors.onSurfaceVariant
+                    colors.onSecondaryContainer.copy(alpha = 0.78f)
                 },
                 compact = compact,
                 modifier = Modifier.weight(1f),
@@ -157,9 +156,9 @@ fun MacroCardsRow(
             MacroMetric(
                 label = R.string.protein,
                 grams = protein,
-                cardColor = if (darkTheme) TodayPalette.proteinCard else colors.surfaceContainerLow,
-                contentColor = if (darkTheme) TodayPalette.primaryText else colors.onSurface,
-                secondaryColor = if (darkTheme) TodayPalette.secondaryText else colors.onSurfaceVariant,
+                cardColor = if (darkTheme) TodayPalette.proteinCard else colors.tertiaryContainer,
+                contentColor = if (darkTheme) TodayPalette.primaryText else colors.onTertiaryContainer,
+                secondaryColor = if (darkTheme) TodayPalette.secondaryText else colors.onTertiaryContainer.copy(alpha = 0.78f),
                 compact = compact,
                 modifier = Modifier.weight(1f),
             )
@@ -188,25 +187,26 @@ fun MacroDistributionCard(
     val primaryTextColor = if (darkTheme) TodayPalette.primaryText else colors.onSurface
     val secondaryTextColor = if (darkTheme) TodayPalette.secondaryText else colors.onSurfaceVariant
 
+    val distributionCardColor = if (darkTheme) {
+        TodayPalette.distributionCard
+    } else {
+        lerp(colors.surfaceContainerLow, colors.secondaryContainer, 0.34f)
+    }
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (darkTheme) TodayPalette.distributionCard else colors.surfaceContainerLow,
-        ),
+        colors = CardDefaults.cardColors(containerColor = distributionCardColor),
     ) {
         Box(Modifier.fillMaxWidth()) {
-            if (darkTheme) {
-                TodayCardArtwork(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .offset(x = (-18).dp, y = 18.dp),
-                    size = 112.dp,
-                    alpha = 0.035f,
-                    shapeIndex = 4,
-                    rotation = 37f,
-                )
-            }
+            TodayCardArtwork(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-18).dp, y = 18.dp),
+                size = 112.dp,
+                alpha = if (darkTheme) 0.035f else 0.055f,
+                shapeIndex = 4,
+                rotation = 37f,
+            )
             Column(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -277,19 +277,17 @@ private fun MacroMetric(
         ),
     ) {
         Box(Modifier.fillMaxWidth()) {
-            if (MaterialTheme.colorScheme.isDarkCalTrackTheme()) {
-                TodayCardArtwork(
-                    modifier = when (label) {
-                        R.string.carbs -> Modifier.align(Alignment.TopStart).offset(x = (-14).dp, y = (-14).dp)
-                        R.string.fat -> Modifier.align(Alignment.BottomEnd).offset(x = 20.dp, y = 12.dp)
-                        else -> Modifier.align(Alignment.BottomStart).offset(x = (-18).dp, y = 12.dp)
-                    },
-                    size = 72.dp,
-                    alpha = 0.06f,
-                    shapeIndex = artworkVariant,
-                    rotation = 12f + Math.floorMod(artworkVariant * 17, 47),
-                )
-            }
+            TodayCardArtwork(
+                modifier = when (label) {
+                    R.string.carbs -> Modifier.align(Alignment.TopStart).offset(x = (-14).dp, y = (-14).dp)
+                    R.string.fat -> Modifier.align(Alignment.BottomEnd).offset(x = 20.dp, y = 12.dp)
+                    else -> Modifier.align(Alignment.BottomStart).offset(x = (-18).dp, y = 12.dp)
+                },
+                size = 72.dp,
+                alpha = if (MaterialTheme.colorScheme.isDarkCalTrackTheme()) 0.06f else 0.045f,
+                shapeIndex = artworkVariant,
+                rotation = 12f + Math.floorMod(artworkVariant * 17, 47),
+            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

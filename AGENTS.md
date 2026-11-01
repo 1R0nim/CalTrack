@@ -16,14 +16,14 @@ Core principles:
 
 ## Mandatory UI standard
 
-Google Material 3 Expressive is the permanent standard for all UI work. Apply its components and principles while preserving CalTrack's identity:
+CalTrack must always support System, Light and Dark themes. All three must use appropriate Material 3 Expressive color schemes. Individual screens must support both Light and Dark appearances.
 
-- Dark navy backgrounds with the existing blue and lavender accents.
-- Existing nutrient colors, typography, iconography, rounded cards, and floating navigation elements.
-- Clear typography hierarchy, consistent spacing, and appropriate rounded shapes.
-- Expressive but restrained colors, purposeful animations, and useful interaction feedback.
-- Accessible touch targets and responsive layouts.
-- Consistent dark and light themes; preserve system theme and dynamic color support where already implemented.
+- Light Theme: use light Material You surfaces, soft pastels, and expressive blue, lavender, teal, and complementary tones.
+- Dark Theme: use deep blue and indigo tonal surfaces, readable text, and appropriate contrast. Pure black backgrounds are not required; avoid a monochromatic smoked-glass appearance.
+- Preserve existing nutrient colors, typography, iconography, rounded cards, and floating navigation elements.
+- Keep clear contrast, readable typography, consistent spacing, and accessible touch targets.
+- Use expressive shapes, purposeful motion, useful interaction feedback, and responsive layouts.
+- Use dynamic Material You palettes when appropriate and keep the visual language consistent across sections.
 
 Do not imitate another app wholesale or make UI changes that unnecessarily disrupt existing screens.
 

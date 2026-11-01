@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -28,16 +30,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,12 +61,15 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.caltrack.R
 import com.example.caltrack.data.AppSettings
 import com.example.caltrack.data.ThemeMode
+import com.example.caltrack.ui.AiConnectionState
 import com.example.caltrack.ui.components.ScreenTitle
 import com.example.caltrack.ui.theme.CalTrackTheme
 import com.example.caltrack.ui.theme.DynamicColorSupported
@@ -71,11 +82,18 @@ fun MenuScreen(
     settings: AppSettings,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    aiConnectionState: AiConnectionState,
+    onSaveGeminiApiKey: (String) -> Unit,
+    onRemoveGeminiApiKey: () -> Unit,
+    onTestGeminiConnection: () -> Unit,
     contentPadding: PaddingValues,
+    aiConnectionDetail: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val context = LocalContext.current
+    var geminiApiKey by remember { mutableStateOf("") }
+    var showGeminiApiKey by remember { mutableStateOf(false) }
     val version = remember(context) { context.versionName() }
     val launcherIcon = remember(context) {
         val drawable = requireNotNull(context.getDrawable(R.mipmap.ic_launcher_round))
@@ -113,6 +131,89 @@ fun MenuScreen(
             DynamicColorRow(enabled = settings.dynamicColor, onChange = onDynamicColorChange)
         }
 
+        SectionHeader(R.string.ai_assistant)
+        SettingsCard {
+            Text(stringResource(R.string.ai_provider), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.ai_provider_gemini),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.ai_byok_notice),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = geminiApiKey,
+                onValueChange = { geminiApiKey = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.gemini_api_key)) },
+                singleLine = true,
+                visualTransformation = if (showGeminiApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    TextButton(onClick = { showGeminiApiKey = !showGeminiApiKey }) {
+                        Text(stringResource(if (showGeminiApiKey) R.string.hide_api_key else R.string.show_api_key))
+                    }
+                },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(
+                    onClick = {
+                        if (geminiApiKey.isNotBlank()) {
+                            onSaveGeminiApiKey(geminiApiKey)
+                            geminiApiKey = ""
+                        }
+                    },
+                    enabled = geminiApiKey.isNotBlank(),
+                ) { Text(stringResource(R.string.save_api_key)) }
+                TextButton(
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/apikey")))
+                    },
+                ) { Text(stringResource(R.string.get_gemini_key)) }
+            }
+            if (settings.hasGeminiApiKey) {
+                TextButton(onClick = onTestGeminiConnection, enabled = aiConnectionState != AiConnectionState.TESTING) {
+                    Text(stringResource(if (aiConnectionState == AiConnectionState.TESTING) R.string.testing_connection else R.string.test_connection))
+                }
+                Text(
+                    stringResource(aiConnectionState.statusLabel(settings.hasGeminiApiKey)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when (aiConnectionState) {
+                        AiConnectionState.CONNECTED -> MaterialTheme.colorScheme.primary
+                        AiConnectionState.INVALID_KEY, AiConnectionState.QUOTA, AiConnectionState.RATE_LIMITED, AiConnectionState.UNAVAILABLE, AiConnectionState.FAILED -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+                if (aiConnectionState != AiConnectionState.TESTING) {
+                    aiConnectionDetail?.let { detail ->
+                        Text(
+                            stringResource(R.string.ai_error_detail, detail),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                TextButton(onClick = onRemoveGeminiApiKey) {
+                    Text(stringResource(R.string.remove_api_key), color = MaterialTheme.colorScheme.error)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.ai_grounding_cost_notice),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.ai_byok_security_limitation),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         SectionHeader(R.string.about)
         SettingsCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -135,6 +236,17 @@ fun MenuScreen(
             }
         }
     }
+}
+
+private fun AiConnectionState.statusLabel(hasKey: Boolean): Int = when (this) {
+    AiConnectionState.NOT_TESTED -> if (hasKey) R.string.ai_connection_not_tested else R.string.ai_key_missing
+    AiConnectionState.TESTING -> R.string.testing_connection
+    AiConnectionState.CONNECTED -> R.string.ai_connection_connected
+    AiConnectionState.INVALID_KEY -> R.string.ai_connection_invalid_key
+    AiConnectionState.QUOTA -> R.string.ai_connection_quota
+    AiConnectionState.RATE_LIMITED -> R.string.ai_connection_rate_limited
+    AiConnectionState.UNAVAILABLE -> R.string.ai_error_unavailable
+    AiConnectionState.FAILED -> R.string.ai_connection_failed
 }
 
 @Composable
@@ -164,7 +276,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-/** Connected Expressive button group; icon above the label so all three fit on a 360 dp screen. */
+/** Connected expressive button group for System, Light and Dark preferences. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ThemeModeGroup(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
@@ -286,6 +398,10 @@ private fun MenuScreenPreview() {
                 settings = AppSettings(),
                 onThemeModeChange = {},
                 onDynamicColorChange = {},
+                aiConnectionState = AiConnectionState.NOT_TESTED,
+                onSaveGeminiApiKey = {},
+                onRemoveGeminiApiKey = {},
+                onTestGeminiConnection = {},
                 contentPadding = PaddingValues(0.dp),
             )
         }

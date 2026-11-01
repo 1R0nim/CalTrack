@@ -23,7 +23,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
             val loadedSettings by settingsViewModel.settings.collectAsStateWithLifecycle()
-            // Nothing is drawn until the saved settings are read, so the wrong theme never flashes
+            val aiConnectionState by settingsViewModel.aiConnectionState.collectAsStateWithLifecycle()
+            val aiConnectionDetail by settingsViewModel.aiConnectionDetail.collectAsStateWithLifecycle()
+            // Nothing is drawn until the saved settings are read, so the palette never flashes.
             val settings = loadedSettings
             if (settings != null) {
                 val darkTheme = when (settings.themeMode) {
@@ -31,7 +33,6 @@ class MainActivity : ComponentActivity() {
                     ThemeMode.Light -> false
                     ThemeMode.Dark -> true
                 }
-                // System bar icons follow the app's theme, which may differ from the system's
                 DisposableEffect(darkTheme) {
                     enableEdgeToEdge(
                         statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { darkTheme },
@@ -44,6 +45,11 @@ class MainActivity : ComponentActivity() {
                         settings = settings,
                         onThemeModeChange = settingsViewModel::setThemeMode,
                         onDynamicColorChange = settingsViewModel::setDynamicColor,
+                        aiConnectionState = aiConnectionState,
+                        aiConnectionDetail = aiConnectionDetail,
+                        onSaveGeminiApiKey = settingsViewModel::saveGeminiApiKey,
+                        onRemoveGeminiApiKey = settingsViewModel::removeGeminiApiKey,
+                        onTestGeminiConnection = settingsViewModel::testGeminiConnection,
                     )
                 }
             }

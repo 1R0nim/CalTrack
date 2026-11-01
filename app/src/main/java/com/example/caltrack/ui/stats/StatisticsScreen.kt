@@ -1,7 +1,18 @@
 package com.example.caltrack.ui.stats
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,11 +36,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,15 +48,18 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
@@ -60,7 +72,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.caltrack.R
-import com.example.caltrack.ui.components.ScreenTitle
 import com.example.caltrack.ui.theme.CalTrackTheme
 import com.example.caltrack.ui.theme.CardShape
 import com.example.caltrack.ui.theme.SmallCardShape
@@ -75,56 +86,6 @@ import kotlin.math.roundToInt
 private val ChartAxisWidth = 44.dp
 private val ChartHeight = 188.dp
 private val ChartLabelHeight = 22.dp
-
-private object StatisticsPalette {
-    val background = Color(0xFF000000)
-    val surface = Color(0xFF11141D)
-    val surfaceSecondary = Color(0xFF181D2A)
-    val surfaceElevated = Color(0xFF222C42)
-    val hero = Color(0xFF202C49)
-    val primary = Color(0xFFAFC4FF)
-    val secondary = Color(0xFF8499BC)
-    val tertiary = Color(0xFFBFA8E8)
-    val primaryText = Color(0xFFF2F2F7)
-    val secondaryText = Color(0xFFA7ADBC)
-}
-
-private fun ColorScheme.withStatisticsPalette(): ColorScheme {
-    if (background.luminance() >= 0.5f) return this
-    return copy(
-        primary = StatisticsPalette.primary,
-        onPrimary = Color(0xFF17213A),
-        primaryContainer = StatisticsPalette.hero,
-        onPrimaryContainer = StatisticsPalette.primaryText,
-        secondary = StatisticsPalette.secondary,
-        onSecondary = Color(0xFF111723),
-        secondaryContainer = Color(0xFF222C40),
-        onSecondaryContainer = StatisticsPalette.primaryText,
-        tertiary = StatisticsPalette.tertiary,
-        onTertiary = Color(0xFF251E35),
-        tertiaryContainer = Color(0xFF29243A),
-        onTertiaryContainer = StatisticsPalette.primaryText,
-        background = StatisticsPalette.background,
-        onBackground = StatisticsPalette.primaryText,
-        surface = StatisticsPalette.surface,
-        onSurface = StatisticsPalette.primaryText,
-        surfaceVariant = StatisticsPalette.surfaceSecondary,
-        onSurfaceVariant = StatisticsPalette.secondaryText,
-        outline = StatisticsPalette.secondary.copy(alpha = 0.34f),
-        outlineVariant = StatisticsPalette.secondary.copy(alpha = 0.18f),
-        inverseSurface = Color(0xFFE5E9F2),
-        inverseOnSurface = Color(0xFF191D27),
-        inversePrimary = Color(0xFF53688F),
-        surfaceTint = StatisticsPalette.primary,
-        surfaceDim = StatisticsPalette.background,
-        surfaceBright = StatisticsPalette.surfaceElevated,
-        surfaceContainerLowest = Color(0xFF080A10),
-        surfaceContainerLow = StatisticsPalette.surface,
-        surfaceContainer = StatisticsPalette.surfaceSecondary,
-        surfaceContainerHigh = StatisticsPalette.surfaceElevated,
-        surfaceContainerHighest = Color(0xFF2B354A),
-    )
-}
 
 @Composable
 fun StatisticsRoute(
@@ -146,22 +107,12 @@ fun StatisticsScreen(
     onPeriodSelected: (StatisticsPeriod) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val baseColorScheme = MaterialTheme.colorScheme
-    val statisticsColorScheme = remember(baseColorScheme) {
-        baseColorScheme.withStatisticsPalette()
-    }
-    MaterialExpressiveTheme(
-        colorScheme = statisticsColorScheme,
-        motionScheme = MaterialTheme.motionScheme,
-        typography = MaterialTheme.typography,
-    ) {
-        StatisticsDashboard(
-            state = state,
-            contentPadding = contentPadding,
-            onPeriodSelected = onPeriodSelected,
-            modifier = modifier,
-        )
-    }
+    StatisticsDashboard(
+        state = state,
+        contentPadding = contentPadding,
+        onPeriodSelected = onPeriodSelected,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -184,16 +135,24 @@ private fun StatisticsDashboard(
                 bottom = contentPadding.calculateBottomPadding(),
             ),
     ) {
-        ScreenTitle(
-            text = stringResource(R.string.section_stats),
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Text(
-            text = stringResource(R.string.stats_dashboard_subtitle),
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 18.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 20.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.section_stats),
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.stats_dashboard_subtitle),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         PeriodSelector(selected = state.period, onSelected = onPeriodSelected)
 
         val summary = state.summary
@@ -202,16 +161,34 @@ private fun StatisticsDashboard(
             summary.totals.loggedDays == 0 -> StatisticsEmptyState()
             else -> {
                 Spacer(Modifier.height(20.dp))
-                AverageCaloriesCard(summary)
-                Spacer(Modifier.height(14.dp))
-                MacronutrientAveragesCard(summary)
-                Spacer(Modifier.height(14.dp))
-                DailyCaloriesChartCard(summary)
-                Spacer(Modifier.height(14.dp))
-                MacroContributionCard(summary)
-                Spacer(Modifier.height(14.dp))
-                PeriodHighlightsCard(summary)
-                Spacer(Modifier.height(18.dp))
+                AnimatedContent(
+                    targetState = summary,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) +
+                            scaleIn(initialScale = 0.975f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)))
+                            .togetherWith(fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)))
+                    },
+                    label = "statistics-period-content",
+                ) { animatedSummary ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateContentSize(
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            ),
+                    ) {
+                        AverageCaloriesCard(animatedSummary)
+                        Spacer(Modifier.height(16.dp))
+                        MacronutrientAveragesCard(animatedSummary)
+                        Spacer(Modifier.height(16.dp))
+                        DailyCaloriesChartCard(animatedSummary)
+                        Spacer(Modifier.height(16.dp))
+                        MacroContributionCard(animatedSummary)
+                        Spacer(Modifier.height(16.dp))
+                        PeriodHighlightsCard(animatedSummary)
+                        Spacer(Modifier.height(18.dp))
+                    }
+                }
             }
         }
     }
@@ -298,32 +275,60 @@ private fun PeriodSelector(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = calTrackSurfaceBorder(),
     ) {
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
         ) {
-            periods.forEachIndexed { index, period ->
-                ToggleButton(
-                    checked = period == selected,
-                    onCheckedChange = { onSelected(period) },
-                    shapes = when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        periods.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 48.dp),
-                ) {
-                    Text(
-                        text = stringResource(periodLabel(period)),
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+            val itemWidth = maxWidth / periods.size
+            val selectedIndex = periods.indexOf(selected)
+            val indicatorOffset by animateDpAsState(
+                targetValue = itemWidth * selectedIndex,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+                label = "period-indicator",
+            )
+            Box(
+                modifier = Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset(indicatorOffset.roundToPx(), 0) }
+                    .width(itemWidth)
+                    .height(48.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        RoundedCornerShape(24.dp),
+                    ),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            ) {
+                periods.forEachIndexed { index, period ->
+                    ToggleButton(
+                        checked = period == selected,
+                        onCheckedChange = { onSelected(period) },
+                        colors = androidx.compose.material3.ToggleButtonDefaults.colors(
+                            checkedContainerColor = Color.Transparent,
+                            checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
+                        shapes = when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            periods.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp),
+                    ) {
+                        Text(
+                            text = stringResource(periodLabel(period)),
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -344,7 +349,7 @@ private fun AverageCaloriesCard(summary: StatisticsSummary) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp),
-        shape = CardShape,
+        shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 18.dp, bottomEnd = 44.dp),
         border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -376,13 +381,23 @@ private fun AverageCaloriesCard(summary: StatisticsSummary) {
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = formatStatNumber(stats.avgKcal),
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
+                    AnimatedContent(
+                        targetState = formatStatNumber(stats.avgKcal),
+                        transitionSpec = {
+                            (fadeIn(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) +
+                                scaleIn(initialScale = 0.92f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)))
+                                .togetherWith(fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)))
+                        },
+                        label = "average-calories",
+                    ) { calories ->
+                        Text(
+                            text = calories,
+                            style = MaterialTheme.typography.displayLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.kcal),
@@ -475,7 +490,18 @@ private fun MacronutrientAveragesCard(summary: StatisticsSummary) {
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MacroAverageCard(
+                    modifier = Modifier.weight(1.08f),
+                    shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp, bottomStart = 14.dp, bottomEnd = 32.dp),
+                    label = stringResource(R.string.protein),
+                    average = formatStatNumber(totals.avgProtein),
+                    total = formatStatNumber(totals.totalProtein),
+                    containerColor = colors.secondaryContainer,
+                    contentColor = colors.onSecondaryContainer,
+                    accentColor = colors.secondary,
+                )
+                MacroAverageCard(
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(topStart = 18.dp, topEnd = 34.dp, bottomStart = 30.dp, bottomEnd = 18.dp),
                     label = stringResource(R.string.carbs),
                     average = formatStatNumber(totals.avgCarbs),
                     total = formatStatNumber(totals.totalCarbs),
@@ -485,21 +511,13 @@ private fun MacronutrientAveragesCard(summary: StatisticsSummary) {
                 )
                 MacroAverageCard(
                     modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(topStart = 30.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 34.dp),
                     label = stringResource(R.string.fat),
                     average = formatStatNumber(totals.avgFat),
                     total = formatStatNumber(totals.totalFat),
                     containerColor = colors.tertiaryContainer,
                     contentColor = colors.onTertiaryContainer,
                     accentColor = colors.tertiary,
-                )
-                MacroAverageCard(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.protein),
-                    average = formatStatNumber(totals.avgProtein),
-                    total = formatStatNumber(totals.totalProtein),
-                    containerColor = colors.secondaryContainer,
-                    contentColor = colors.onSecondaryContainer,
-                    accentColor = colors.secondary,
                 )
             }
         }
@@ -509,6 +527,7 @@ private fun MacronutrientAveragesCard(summary: StatisticsSummary) {
 @Composable
 private fun MacroAverageCard(
     modifier: Modifier,
+    shape: androidx.compose.ui.graphics.Shape,
     label: String,
     average: String,
     total: String,
@@ -518,7 +537,7 @@ private fun MacroAverageCard(
 ) {
     Card(
         modifier = modifier.heightIn(min = 146.dp),
-        shape = SmallCardShape,
+        shape = shape,
         border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
     ) {
@@ -586,11 +605,11 @@ private fun DailyCaloriesChartCard(summary: StatisticsSummary) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp),
-        shape = CardShape,
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 24.dp, bottomStart = 30.dp, bottomEnd = 16.dp),
         border = calTrackSurfaceBorder(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             Text(
                 text = stringResource(R.string.stats_daily_calories),
                 style = MaterialTheme.typography.titleMedium,
@@ -628,7 +647,7 @@ private fun DailyCaloriesChart(summary: StatisticsSummary) {
     val values = summary.dailyCalories.mapNotNull { it.kcal }
     val chartMin = minOf(0.0, values.minOrNull() ?: 0.0)
     val chartMaxInitial = maxOf(0.0, values.maxOrNull() ?: 0.0)
-    val chartMax = if ((chartMin == 0.0) && (chartMaxInitial == 0.0)) 4.0 else chartMaxInitial * 1.1
+    val chartMax = if (chartMaxInitial == 0.0) 4.0 else chartMaxInitial * 1.1
     val range = chartMax - chartMin
     val ticks = List(5) { index -> chartMax - (range * index / 4.0) }
     val motionSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
@@ -641,6 +660,16 @@ private fun DailyCaloriesChart(summary: StatisticsSummary) {
             ).value
         }
     }
+    val firstLoggedIndex = summary.dailyCalories.indexOfLast { it.kcal != null }
+    var selectedIndex by remember(summary.period, summary.dailyCalories) {
+        mutableIntStateOf(firstLoggedIndex)
+    }
+    val selectedPoint = summary.dailyCalories[selectedIndex.coerceIn(0, summary.dailyCalories.lastIndex)]
+    val animatedSelection by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "chart-selection",
+    )
 
     Row(verticalAlignment = Alignment.Top) {
         Column(
@@ -668,8 +697,45 @@ private fun DailyCaloriesChart(summary: StatisticsSummary) {
                 .height(ChartHeight),
         ) {
             val barColor = MaterialTheme.colorScheme.primary
+            val inactiveBarColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.68f)
             val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)
-            Canvas(Modifier.fillMaxSize()) {
+            val selectedX = maxWidth * ((animatedSelection + 0.5f) / summary.dailyCalories.size)
+            val tooltipX = (selectedX - 44.dp).coerceIn(0.dp, (maxWidth - 88.dp).coerceAtLeast(0.dp))
+
+            Canvas(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(summary.dailyCalories) {
+                        fun selectNearestLogged(x: Float) {
+                            val projectedIndex = ((x / size.width) * summary.dailyCalories.size)
+                                .toInt()
+                                .coerceIn(0, summary.dailyCalories.lastIndex)
+                            val nearest = summary.dailyCalories.indices
+                                .filter { summary.dailyCalories[it].kcal != null }
+                                .minByOrNull { abs(it - projectedIndex) }
+                            if (nearest != null) selectedIndex = nearest
+                        }
+                        detectTapGestures { tap -> selectNearestLogged(tap.x) }
+                    }
+                    .pointerInput(summary.dailyCalories) {
+                        fun selectNearestLogged(x: Float) {
+                            val projectedIndex = ((x / size.width) * summary.dailyCalories.size)
+                                .toInt()
+                                .coerceIn(0, summary.dailyCalories.lastIndex)
+                            val nearest = summary.dailyCalories.indices
+                                .filter { summary.dailyCalories[it].kcal != null }
+                                .minByOrNull { abs(it - projectedIndex) }
+                            if (nearest != null) selectedIndex = nearest
+                        }
+                        detectDragGestures(
+                            onDragStart = { selectNearestLogged(it.x) },
+                            onDrag = { change, _ ->
+                                selectNearestLogged(change.position.x)
+                                change.consume()
+                            },
+                        )
+                    },
+            ) {
                 repeat(5) { index ->
                     val y = size.height * index / 4f
                     drawLine(
@@ -690,18 +756,54 @@ private fun DailyCaloriesChart(summary: StatisticsSummary) {
                     val centerX = slotWidth * (index + 0.5f)
                     val valueY = valueToY(animatedValues[index].toDouble(), chartMin, chartMax, size.height)
                     val barHeight = abs(zeroY - valueY)
+                    val color = if (index == selectedIndex) barColor else inactiveBarColor
                     if (barHeight <= 1f) {
-                        drawCircle(
-                            color = barColor,
-                            radius = maxOf(2.dp.toPx(), barWidth / 2f),
-                            center = Offset(centerX, zeroY),
-                        )
+                        drawCircle(color, maxOf(2.dp.toPx(), barWidth / 2f), Offset(centerX, zeroY))
                     } else {
                         drawRoundRect(
-                            color = barColor,
+                            color = color,
                             topLeft = Offset(centerX - barWidth / 2f, minOf(zeroY, valueY)),
                             size = Size(barWidth, barHeight),
                             cornerRadius = CornerRadius(minOf(barWidth / 2f, barHeight / 2f)),
+                        )
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = tooltipX, y = 4.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = 3.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = formatChartDate(selectedPoint.date, summary.period),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                    AnimatedContent(
+                        targetState = selectedPoint.kcal,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) +
+                                scaleIn(initialScale = 0.92f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)))
+                                .togetherWith(fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)))
+                        },
+                        label = "chart-value",
+                    ) { kcal ->
+                        Text(
+                            text = stringResource(R.string.amount_kcal, formatStatNumber(kcal ?: 0.0, fractionDigits = 0)),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
                         )
                     }
                 }
@@ -731,7 +833,9 @@ private fun DailyCaloriesChart(summary: StatisticsSummary) {
                     Text(
                         text = formatChartDate(point.date, summary.period),
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (index == selectedIndex) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (index == selectedIndex) FontWeight.Bold else FontWeight.Normal,
                         maxLines = 1,
                         softWrap = false,
                     )
@@ -827,17 +931,26 @@ private fun MacroContributionBar(
     colors: List<Color>,
     trackColor: Color,
 ) {
+    val animatedShares = shares.mapIndexed { index, share ->
+        key(index) {
+            animateFloatAsState(
+                targetValue = share.toFloat(),
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "macro-share",
+            ).value
+        }
+    }
     Canvas(
         Modifier
             .fillMaxWidth()
             .height(14.dp),
     ) {
         drawRoundRect(trackColor, cornerRadius = CornerRadius(size.height / 2f))
-        val visible = shares.withIndex().filter { it.value > 0.005 }
+        val visible = animatedShares.withIndex().filter { it.value > 0.005f }
         if (visible.isEmpty()) return@Canvas
         val gap = 4.dp.toPx()
         val available = size.width - gap * (visible.size - 1)
-        val total = visible.sumOf { it.value }
+        val total = visible.sumOf { it.value.toDouble() }
         var x = 0f
         visible.forEach { (index, share) ->
             val width = available * (share / total).toFloat()

@@ -25,7 +25,11 @@ Keep this roadmap current as features are implemented. Do not mark work complete
 - [x] Frequent Foods section in the Add Food flow.
 - [x] Search shortcut in the Add Food flow.
 - [x] Local food search with case- and diacritic-insensitive matching.
-- [x] Barcode scanning, Open Food Facts lookup, and reviewed product saving through Add Food.
+- [x] Barcode scanning, Open Food Facts lookup, and reviewed product saving through Meals and Today.
+- [x] Food Library workflows from Meals: local search, manual saved-food creation, product review, and quick-add.
+- [x] One shared Add Food editor for Today and Meals with per-100 g/ml reference values and automatic quantity-based totals.
+- [x] AI Food Assistant with Gemini BYOK, Keystore-encrypted key storage, first-use privacy consent, grounded source cards, and confirmed journal entry creation.
+- [x] AI Food Assistant as a floating chat window opened from a dedicated button above + on Azi, with per-answer food cards, retry, and an explicit no-search fallback labelled as estimates.
 
 ## Priority 1 — Core functionality
 
@@ -60,7 +64,7 @@ Keep this roadmap current as features are implemented. Do not mark work complete
 - [x] Refine the Statistics screen.
 - [x] Improve card hierarchy and spacing.
 - [x] Improve chart presentation.
-- [x] Redesign the Today and Add Food experience around the AMOLED Black CalTrack palette.
+- [x] Refine Today and Add Food with coordinated Light and Dark Material 3 Expressive palettes.
 - [ ] Improve visual consistency across screens.
 - [ ] Continue following Google Material 3 Expressive.
 
@@ -68,26 +72,19 @@ UI refinements must preserve existing functionality and CalTrack's visual identi
 
 ## Priority 3 — Optional future features
 
-### Nutrition chat integration
-
-- [ ] Explore an optional chat interface for nutrition-related product questions.
-- [ ] Allow questions about calories and macronutrients in particular foods.
-- [ ] Prioritize verified database information.
-- [ ] Clearly distinguish verified data from estimates.
-- [ ] Never fabricate nutritional values.
-- [ ] Evaluate API costs and privacy implications before implementation.
-
-This is optional and must not change the application's core offline functionality.
+The AI Food Assistant implementation and its privacy/security limitations are documented in [AI_FOOD_ASSISTANT.md](AI_FOOD_ASSISTANT.md). Additional providers and direct USDA API integration remain future work.
 
 ## Priority 4 — Long-term expansion
 
-### iOS
+### iOS — Kotlin Multiplatform migration in progress
 
-- [ ] Evaluate a future iOS version.
-- [ ] Assess whether architecture and business logic can be shared.
-- [ ] Investigate options without compromising the Android application.
+- [x] Add a Kotlin Multiplatform shared module with Android and iOS framework targets.
+- [x] Move nutritional reference calculations and quantity units into shared Kotlin code used by Android.
+- [ ] Migrate persistence, application state, and the Compose UI into shared source sets.
+- [ ] Add the iOS host app and platform barcode-scanning implementation.
+- [ ] Verify feature parity on Android and iOS.
 
-This is a long-term idea, not an immediate development priority.
+Keep Android working throughout the migration. iOS builds require macOS and Xcode.
 
 ## Roadmap maintenance
 

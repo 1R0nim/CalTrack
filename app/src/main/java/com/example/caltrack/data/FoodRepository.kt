@@ -101,6 +101,9 @@ class FoodRepository(private val db: CalTrackDatabase) {
 
     suspend fun restoreSavedFood(food: SavedFood) = savedFoodDao.restore(food)
 
+    /** Inserts into the existing library without logging a journal entry. False for name or barcode duplicates. */
+    suspend fun createSavedFood(food: SavedFood): Boolean = savedFoodDao.insertNew(food)
+
     /** False when the new name already belongs to another saved food. */
     suspend fun updateSavedFood(food: SavedFood): Boolean = savedFoodDao.update(food)
 }
