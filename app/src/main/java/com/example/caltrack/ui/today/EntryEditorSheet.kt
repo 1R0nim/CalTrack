@@ -1,14 +1,21 @@
 package com.example.caltrack.ui.today
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -18,13 +25,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,18 +52,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.caltrack.R
+import com.example.caltrack.data.FrequentFood
+import com.example.caltrack.data.filterSavedFoodsForSearch
 import com.example.caltrack.data.local.entity.FoodEntry
 import com.example.caltrack.data.local.entity.SavedFood
 import com.example.caltrack.ui.components.AmountField
 import com.example.caltrack.ui.components.parseOptionalAmount
 import com.example.caltrack.ui.formatAmount
+import com.example.caltrack.ui.formatRounded
 import com.example.caltrack.ui.parseAmount
 import com.example.caltrack.ui.theme.FieldShape
 import kotlinx.coroutines.launch
@@ -58,17 +79,16 @@ import kotlinx.coroutines.launch
 private const val MaxSuggestions = 5
 
 /**
- * Add/edit form for one entry. An [entry] with id 0 is a new one; new entries also get one-tap
- * chips for [recentFoods] and name suggestions from [savedFoods].
+ * Add/edit form for one entry. A new entry can be filled from frequent or searched saved foods,
+ * then reviewed and explicitly saved.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EntryEditorSheet(
     entry: FoodEntry,
-    recentFoods: List<SavedFood>,
+    frequentFoods: List<FrequentFood>,
     savedFoods: List<SavedFood>,
     onSave: (FoodEntry) -> Unit,
-    onQuickAdd: (SavedFood) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val isNew = entry.id == 0L
@@ -115,6 +135,22 @@ fun EntryEditorSheet(
 
     val save = { if (edited != null) close { onSave(edited) } }
     val gramsUnit = stringResource(R.string.grams_unit)
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    fun closeSearch() {
+        searchQuery = ""
+        searchOpen = false
+        focusManager.clearFocus()
+        keyboardController?.hide()
+    }
+
+    fun selectFood(food: SavedFood) {
+        pick(food)
+        closeSearch()
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         val nameFocus = remember { FocusRequester() }
@@ -135,8 +171,17 @@ fun EntryEditorSheet(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
             )
-            if (isNew && recentFoods.isNotEmpty()) {
-                RecentFoodChips(foods = recentFoods, onClick = { food -> close { onQuickAdd(food) } })
+            if (isNew) {
+                FrequentFoodsSection(
+                    foods = frequentFoods,
+                    savedFoods = savedFoods,
+                    searchOpen = searchOpen,
+                    query = searchQuery,
+                    onOpenSearch = { searchOpen = true },
+                    onQueryChange = { searchQuery = it },
+                    onCloseSearch = ::closeSearch,
+                    onSelectFood = ::selectFood,
+                )
             }
             Column(
                 modifier = Modifier.padding(horizontal = 20.dp),
@@ -238,26 +283,287 @@ fun EntryEditorSheet(
     }
 }
 
-/** One tap logs the food with its last portion. */
 @Composable
-private fun RecentFoodChips(foods: List<SavedFood>, onClick: (SavedFood) -> Unit) {
-    val gramsUnit = stringResource(R.string.grams_unit)
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 20.dp),
+private fun FrequentFoodsSection(
+    foods: List<FrequentFood>,
+    savedFoods: List<SavedFood>,
+    searchOpen: Boolean,
+    query: String,
+    onOpenSearch: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onCloseSearch: () -> Unit,
+    onSelectFood: (SavedFood) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.frequent_foods),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        AnimatedContent(targetState = searchOpen, label = "frequent-food-search") { searching ->
+            if (searching) {
+                FoodSearchPanel(
+                    savedFoods = savedFoods,
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    onClose = onCloseSearch,
+                    onSelect = onSelectFood,
+                )
+            } else {
+                FrequentFoodRow(foods = foods, onSearch = onOpenSearch, onSelect = onSelectFood)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FrequentFoodRow(
+    foods: List<FrequentFood>,
+    onSearch: () -> Unit,
+    onSelect: (SavedFood) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(foods, key = { it.id }) { food ->
-            SuggestionChip(
-                onClick = { onClick(food) },
-                label = {
-                    Text(
-                        text = stringResource(R.string.chip_food, food.name, formatAmount(food.defaultGrams), gramsUnit),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
+        if (foods.isEmpty()) {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 88.dp),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Text(
+                    text = stringResource(R.string.frequent_food_empty),
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            LazyRow(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(end = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(foods, key = { SavedFood.nameKeyOf(it.food.name) }) { item ->
+                    FrequentFoodCard(item = item, onClick = { onSelect(item.food) })
+                }
+            }
+        }
+        FilledTonalIconButton(
+            onClick = onSearch,
+            modifier = Modifier.size(48.dp),
+            shapes = IconButtonDefaults.shapes(),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = stringResource(R.string.search_foods),
             )
         }
+    }
+}
+
+@Composable
+private fun FrequentFoodCard(item: FrequentFood, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .width(148.dp)
+            .heightIn(min = 88.dp)
+            .clickable(
+                onClickLabel = stringResource(R.string.select_food, item.food.name),
+                role = Role.Button,
+                onClick = onClick,
+            ),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = item.food.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            item.occurrenceCount?.let { count ->
+                Text(
+                    text = stringResource(R.string.frequent_food_count, count),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            Text(
+                text = stringResource(R.string.amount_grams, formatAmount(item.food.defaultGrams)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FoodSearchPanel(
+    savedFoods: List<SavedFood>,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    onSelect: (SavedFood) -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val matches = remember(savedFoods, query) { filterSavedFoodsForSearch(savedFoods, query) }
+    val container = MaterialTheme.colorScheme.surfaceContainerHigh
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 56.dp)
+                    .focusRequester(focusRequester),
+                placeholder = { Text(stringResource(R.string.search_foods)) },
+                leadingIcon = {
+                    Icon(painterResource(R.drawable.ic_search), contentDescription = null)
+                },
+                trailingIcon = if (query.isNotEmpty()) {
+                    {
+                        IconButton(
+                            onClick = { onQueryChange("") },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_close),
+                                contentDescription = stringResource(R.string.clear_search),
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
+                singleLine = true,
+                shape = CircleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = container,
+                    unfocusedContainerColor = container,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+            )
+            FilledTonalIconButton(
+                onClick = onClose,
+                modifier = Modifier.size(48.dp),
+                shapes = IconButtonDefaults.shapes(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.close_search),
+                )
+            }
+        }
+        if (matches.isEmpty()) {
+            Text(
+                text = if (SavedFood.searchKeyOf(query).isEmpty()) {
+                    stringResource(R.string.search_foods_empty)
+                } else {
+                    stringResource(R.string.meals_no_results, query.trim())
+                },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 260.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    matches.forEach { food ->
+                        FoodSearchResult(food = food, onClick = { onSelect(food) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FoodSearchResult(food: SavedFood, onClick: () -> Unit) {
+    val portion = food.toEntry(food.defaultGrams)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                onClickLabel = stringResource(R.string.select_food, food.name),
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = food.name,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(
+                    R.string.meal_portion,
+                    formatAmount(food.defaultGrams),
+                    formatRounded(portion.kcal),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(
+                    R.string.meal_macros,
+                    formatRounded(portion.protein),
+                    formatRounded(portion.carbs),
+                    formatRounded(portion.fat),
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            painter = painterResource(R.drawable.ic_add),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 

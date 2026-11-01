@@ -31,6 +31,44 @@ interface FoodEntryDao {
     @Query("SELECT DISTINCT date FROM food_entries")
     fun observeLoggedDays(): Flow<List<LocalDate>>
 
+    /** Actual journal occurrences grouped by a whitespace-trimmed, case-insensitive name. */
+    @Query(
+        """
+        SELECT
+            (SELECT latest.name FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS name,
+            COUNT(*) AS occurrenceCount,
+            (SELECT latest.id FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastEntryId,
+            (SELECT latest.loggedAt FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastLoggedAt,
+            (SELECT latest.grams FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastGrams,
+            (SELECT latest.kcal FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastKcal,
+            (SELECT latest.protein FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastProtein,
+            (SELECT latest.carbs FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastCarbs,
+            (SELECT latest.fat FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastFat,
+            (SELECT latest.date FROM food_entries AS latest
+             WHERE lower(trim(latest.name)) = lower(trim(logged.name))
+             ORDER BY latest.loggedAt DESC, latest.id DESC LIMIT 1) AS lastDate
+        FROM food_entries AS logged
+        GROUP BY lower(trim(logged.name))
+        """
+    )
+    fun observeFoodUsage(): Flow<List<FoodUsageAggregate>>
+
     /** Per-day totals for the history list, newest day first. Days without entries are absent. */
     @Query(
         """

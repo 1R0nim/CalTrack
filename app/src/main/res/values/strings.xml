@@ -74,6 +74,13 @@
     <string name="save">Salvează</string>
     <string name="cancel">Renunță</string>
     <string name="chip_food">%1$s · %2$s %3$s</string>
+    <string name="frequent_foods">Cele mai frecvente</string>
+    <string name="frequent_food_count">%1$d utilizări</string>
+    <string name="frequent_food_empty">Alimentele înregistrate vor apărea aici.</string>
+    <string name="search_foods">Caută alimente salvate</string>
+    <string name="search_foods_empty">Nu ai încă alimente salvate pentru căutare.</string>
+    <string name="close_search">Închide căutarea</string>
+    <string name="select_food">Selectează %1$s</string>
     <string name="per_100g_kcal">%1$s kcal/100 g</string>
 
     <string name="search_meals">Caută</string>

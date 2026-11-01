@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.caltrack.CalTrackApp
 import com.example.caltrack.data.FoodRepository
+import com.example.caltrack.data.FrequentFood
 import com.example.caltrack.data.local.entity.FoodEntry
 import com.example.caltrack.data.local.entity.SavedFood
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -70,8 +71,8 @@ class TodayViewModel(private val repository: FoodRepository) : ViewModel() {
     val savedFoods: StateFlow<List<SavedFood>> = repository.observeSavedFoods()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Last used saved foods, for the one-tap chips in the add form. */
-    val recentFoods: StateFlow<List<SavedFood>> = repository.observeRecentFoods(limit = 8)
+    /** Journal-backed most frequent foods, with a saved-food fallback when history is empty. */
+    val frequentFoods: StateFlow<List<FrequentFood>> = repository.observeFrequentFoods(limit = 8)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _editingEntry = MutableStateFlow<FoodEntry?>(null)
@@ -115,13 +116,6 @@ class TodayViewModel(private val repository: FoodRepository) : ViewModel() {
     fun saveEntry(entry: FoodEntry) {
         closeEditor()
         viewModelScope.launch { repository.saveEntry(entry) }
-    }
-
-    /** One-tap add from the form's chips: its last portion, on the shown day. */
-    fun logSavedFood(food: SavedFood) {
-        closeEditor()
-        val date = selectedDate()
-        viewModelScope.launch { repository.logSavedFood(food, food.defaultGrams, date) }
     }
 
     fun deleteEntry(entry: FoodEntry) {

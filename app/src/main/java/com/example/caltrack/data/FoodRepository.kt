@@ -7,6 +7,7 @@ import com.example.caltrack.data.local.dao.PeriodStats
 import com.example.caltrack.data.local.entity.FoodEntry
 import com.example.caltrack.data.local.entity.SavedFood
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
@@ -32,6 +33,16 @@ class FoodRepository(private val db: CalTrackDatabase) {
     fun observeSavedFoods(): Flow<List<SavedFood>> = savedFoodDao.observeAll()
 
     fun observeRecentFoods(limit: Int): Flow<List<SavedFood>> = savedFoodDao.observeRecent(limit)
+
+    /** Most common foods from current journal entries, with recent saved foods as an empty-history fallback. */
+    fun observeFrequentFoods(limit: Int = 8): Flow<List<FrequentFood>> =
+        combine(
+            entryDao.observeFoodUsage(),
+            savedFoodDao.observeAll(),
+            savedFoodDao.observeRecent(limit),
+        ) { usage, savedFoods, recentFoods ->
+            buildFrequentFoods(usage, savedFoods, recentFoods, limit)
+        }
 
     /**
      * Inserts or updates [entry]. New entries are also remembered as a [SavedFood] for one-tap

@@ -12,6 +12,20 @@ data class DailyTotals(
     val entryCount: Int,
 )
 
+/** One exact-name group from the journal frequency query, with its latest entry snapshot. */
+data class FoodUsageAggregate(
+    val name: String,
+    val occurrenceCount: Int,
+    val lastEntryId: Long,
+    val lastLoggedAt: Long,
+    val lastGrams: Double,
+    val lastKcal: Double,
+    val lastProtein: Double,
+    val lastCarbs: Double,
+    val lastFat: Double,
+    val lastDate: LocalDate,
+)
+
 /**
  * Sums over a date range. Averages divide by days that actually have entries,
  * so days where nothing was logged don't drag the average down.

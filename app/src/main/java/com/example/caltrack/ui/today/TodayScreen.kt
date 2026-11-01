@@ -80,15 +80,14 @@ fun TodayRoute(
     }
 
     editingEntry?.let { entry ->
-        // Collected only while the form is open
-        val recentFoods by viewModel.recentFoods.collectAsStateWithLifecycle()
+        // Food suggestions are collected only while the form is open
+        val frequentFoods by viewModel.frequentFoods.collectAsStateWithLifecycle()
         val savedFoods by viewModel.savedFoods.collectAsStateWithLifecycle()
         EntryEditorSheet(
             entry = entry,
-            recentFoods = recentFoods,
+            frequentFoods = frequentFoods,
             savedFoods = savedFoods,
             onSave = viewModel::saveEntry,
-            onQuickAdd = viewModel::logSavedFood,
             onDismiss = viewModel::closeEditor,
         )
     }
